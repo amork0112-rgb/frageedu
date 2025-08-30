@@ -2069,6 +2069,701 @@ const AdminDashboard = () => {
   );
 };
 
+// Admin Member Management Component
+const AdminMemberManagement = () => {
+  const [adminToken] = useState(localStorage.getItem('adminToken'));
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [totalMembers, setTotalMembers] = useState(0);
+  const [sortConfig, setSortConfig] = useState({ field: 'joinedAt', direction: 'desc' });
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [viewingMember, setViewingMember] = useState(null);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  useEffect(() => {
+    if (!adminToken) {
+      window.location.href = '/admin/login';
+      return;
+    }
+    fetchMembers();
+  }, [adminToken, searchQuery, branchFilter, statusFilter, currentPage, sortConfig]);
+
+  const fetchMembers = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: currentPage,
+        pageSize: pageSize,
+        sort: `${sortConfig.field}:${sortConfig.direction}`
+      });
+      
+      if (searchQuery.trim()) params.append('query', searchQuery.trim());
+      if (branchFilter) params.append('branch', branchFilter);
+      if (statusFilter) params.append('status', statusFilter);
+
+      const response = await axios.get(`${API}/admin/members?${params}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      
+      setMembers(response.data.members || []);
+      setTotalMembers(response.data.pagination?.total || 0);
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMemberDetails = async (memberId) => {
+    try {
+      const response = await axios.get(`${API}/admin/members/${memberId}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      setViewingMember(response.data);
+    } catch (error) {
+      console.error('Failed to fetch member details:', error);
+    }
+  };
+
+  const handleSort = (field) => {
+    setSortConfig({
+      field,
+      direction: sortConfig.field === field && sortConfig.direction === 'asc' ? 'desc' : 'asc'
+    });
+  };
+
+  const handleMemberSelect = (memberId, checked) => {
+    if (checked) {
+      setSelectedMembers([...selectedMembers, memberId]);
+    } else {
+      setSelectedMembers(selectedMembers.filter(id => id !== memberId));
+    }
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedMembers(members.map(m => m.id));
+    } else {
+      setSelectedMembers([]);
+    }
+  };
+
+  const handleResetPassword = async (memberId) => {
+    if (!confirm('이 회원의 비밀번호를 초기화하시겠습니까?')) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await axios.post(`${API}/admin/members/${memberId}/reset-password`, {}, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      
+      alert(`비밀번호가 초기화되었습니다. 임시 비밀번호: ${response.data.temporary_password}`);
+    } catch (error) {
+      alert('비밀번호 초기화에 실패했습니다.');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (memberId, newStatus) => {
+    if (!confirm(`이 회원을 ${newStatus === 'active' ? '활성화' : '비활성화'}하시겠습니까?`)) return;
+    
+    setActionLoading(true);
+    try {
+      await axios.patch(`${API}/admin/members/${memberId}/status`, 
+        { status: newStatus },
+        { headers: { 'Authorization': `Bearer ${adminToken}` } }
+      );
+      
+      fetchMembers(); // Refresh the list
+      alert(`회원 상태가 ${newStatus === 'active' ? '활성화' : '비활성화'}되었습니다.`);
+    } catch (error) {
+      alert('상태 변경에 실패했습니다.');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBulkExport = async () => {
+    if (selectedMembers.length === 0) {
+      alert('내보낼 회원을 선택해주세요.');
+      return;
+    }
+    
+    setActionLoading(true);
+    try {
+      const response = await axios.post(`${API}/admin/members/bulk/export`, 
+        selectedMembers,
+        { headers: { 'Authorization': `Bearer ${adminToken}` } }
+      );
+      
+      // Download CSV
+      const blob = new Blob([response.data.csv_content], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', response.data.filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert(`${selectedMembers.length}명의 회원 정보를 내보냈습니다.`);
+      setSelectedMembers([]);
+    } catch (error) {
+      alert('내보내기에 실패했습니다.');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBulkNotify = async () => {
+    if (selectedMembers.length === 0) {
+      alert('알림을 보낼 회원을 선택해주세요.');
+      return;
+    }
+    
+    const message = prompt('보낼 메시지를 입력하세요:');
+    if (!message) return;
+    
+    setActionLoading(true);
+    try {
+      await axios.post(`${API}/admin/members/bulk/notify`, 
+        { user_ids: selectedMembers, message },
+        { headers: { 'Authorization': `Bearer ${adminToken}` } }
+      );
+      
+      alert(`${selectedMembers.length}명에게 알림을 보냈습니다.`);
+      setSelectedMembers([]);
+    } catch (error) {
+      alert('알림 발송에 실패했습니다.');
+      console.error(error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const totalPages = Math.ceil(totalMembers / pageSize);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="max-w-7xl mx-auto px-4 py-24">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">회원 / 학부모 관리</h1>
+            <p className="text-gray-600">전체 {totalMembers}명의 회원</p>
+          </div>
+          <div className="flex space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = '/admin/dashboard'}
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              대시보드
+            </Button>
+            <Button 
+              onClick={fetchMembers}
+              variant="outline"
+              disabled={loading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              새로고침
+            </Button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>검색</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="이름, 전화번호, 이메일, 학생명으로 검색"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>캠퍼스</Label>
+                <Select value={branchFilter} onValueChange={setBranchFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="전체 캠퍼스" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">전체 캠퍼스</SelectItem>
+                    <SelectItem value="kinder">유치부</SelectItem>
+                    <SelectItem value="junior">초등부</SelectItem>
+                    <SelectItem value="middle">중등부</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>상태</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="전체 상태" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">전체 상태</SelectItem>
+                    <SelectItem value="active">활성</SelectItem>
+                    <SelectItem value="disabled">비활성</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2 flex items-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setSearchQuery('');
+                    setBranchFilter('');
+                    setStatusFilter('');
+                    setCurrentPage(1);
+                  }}
+                  className="w-full"
+                >
+                  <Filter className="w-4 h-4 mr-2" />
+                  필터 초기화
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bulk Actions Bar */}
+        {selectedMembers.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+            <span className="text-blue-800">
+              {selectedMembers.length}명 선택됨
+            </span>
+            <div className="flex space-x-2">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleBulkExport}
+                disabled={actionLoading}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                CSV 내보내기
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleBulkNotify}
+                disabled={actionLoading}
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                알림 발송
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setSelectedMembers([])}
+              >
+                선택 해제
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Members Table */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
+                  <tr>
+                    <th className="px-6 py-4 text-left">
+                      <Checkbox
+                        checked={selectedMembers.length === members.length && members.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <Button variant="ghost" onClick={() => handleSort('name')} className="font-medium">
+                        학부모명
+                        {sortConfig.field === 'name' && (
+                          sortConfig.direction === 'asc' ? 
+                          <SortAsc className="w-4 h-4 ml-1" /> : 
+                          <SortDesc className="w-4 h-4 ml-1" />
+                        )}
+                      </Button>
+                    </th>
+                    <th className="px-6 py-4 text-left">연락처</th>
+                    <th className="px-6 py-4 text-left">이메일</th>
+                    <th className="px-6 py-4 text-left">학생</th>
+                    <th className="px-6 py-4 text-left">캠퍼스</th>
+                    <th className="px-6 py-4 text-left">토큰</th>
+                    <th className="px-6 py-4 text-left">
+                      <Button variant="ghost" onClick={() => handleSort('joinedAt')} className="font-medium">
+                        가입일
+                        {sortConfig.field === 'joinedAt' && (
+                          sortConfig.direction === 'asc' ? 
+                          <SortAsc className="w-4 h-4 ml-1" /> : 
+                          <SortDesc className="w-4 h-4 ml-1" />
+                        )}
+                      </Button>
+                    </th>
+                    <th className="px-6 py-4 text-left">
+                      <Button variant="ghost" onClick={() => handleSort('lastLogin')} className="font-medium">
+                        최근 로그인
+                        {sortConfig.field === 'lastLogin' && (
+                          sortConfig.direction === 'asc' ? 
+                          <SortAsc className="w-4 h-4 ml-1" /> : 
+                          <SortDesc className="w-4 h-4 ml-1" />
+                        )}
+                      </Button>
+                    </th>
+                    <th className="px-6 py-4 text-left">상태</th>
+                    <th className="px-6 py-4 text-left">작업</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={11} className="px-6 py-12 text-center text-gray-500">
+                        <div className="flex items-center justify-center">
+                          <RefreshCw className="w-6 h-6 animate-spin mr-3" />
+                          데이터를 불러오는 중...
+                        </div>
+                      </td>
+                    </tr>
+                  ) : members.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="px-6 py-12 text-center text-gray-500">
+                        검색 결과가 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    members.map((member) => (
+                      <tr key={member.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <Checkbox
+                            checked={selectedMembers.includes(member.id)}
+                            onCheckedChange={(checked) => handleMemberSelect(member.id, checked)}
+                          />
+                        </td>
+                        <td className="px-6 py-4 font-medium">{member.parent_name || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{member.phone || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{member.email || '-'}</td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-1">
+                            {member.students?.map((student, idx) => (
+                              <div key={idx} className="text-sm">
+                                <span className="font-medium">{student.name}</span>
+                                {student.grade && <span className="text-gray-500 ml-2">({student.grade}학년)</span>}
+                              </div>
+                            )) || '-'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={
+                            member.branch === 'kinder' ? 'default' :
+                            member.branch === 'junior' ? 'secondary' : 'outline'
+                          }>
+                            {member.branch === 'kinder' ? '유치부' :
+                             member.branch === 'junior' ? '초등부' :
+                             member.branch === 'middle' ? '중등부' : member.branch}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                              {member.household_token?.substring(0, 8)}...
+                            </code>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => navigator.clipboard.writeText(member.household_token)}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {member.joined_at ? new Date(member.joined_at).toLocaleDateString('ko-KR') : '-'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {member.last_login ? new Date(member.last_login).toLocaleDateString('ko-KR') : '-'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge variant={member.status === 'active' ? 'default' : 'destructive'}>
+                            {member.status === 'active' ? '활성' : '비활성'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => fetchMemberDetails(member.id)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleResetPassword(member.id)}
+                              disabled={actionLoading}
+                            >
+                              <Key className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={member.status === 'active' ? 'destructive' : 'default'}
+                              onClick={() => handleStatusChange(member.id, member.status === 'active' ? 'disabled' : 'active')}
+                              disabled={actionLoading}
+                            >
+                              {member.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6">
+            <div className="text-sm text-gray-700">
+              {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, totalMembers)} of {totalMembers} 결과
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              
+              {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                const pageNum = Math.max(1, currentPage - 2) + i;
+                if (pageNum > totalPages) return null;
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Member Details Modal */}
+      {viewingMember && (
+        <Dialog open={!!viewingMember} onOpenChange={() => setViewingMember(null)}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <Users className="w-5 h-5" />
+                <span>회원 상세 정보</span>
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* User Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">학부모 정보</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">이름</Label>
+                    <p className="text-lg">{viewingMember.user?.name || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">이메일</Label>
+                    <p>{viewingMember.user?.email || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">전화번호</Label>
+                    <p>{viewingMember.user?.phone || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">가입일</Label>
+                    <p>{viewingMember.user?.created_at ? new Date(viewingMember.user.created_at).toLocaleDateString('ko-KR') : '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">최근 로그인</Label>
+                    <p>{viewingMember.user?.last_login_at ? new Date(viewingMember.user.last_login_at).toLocaleDateString('ko-KR') : '없음'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">상태</Label>
+                    <Badge variant={viewingMember.user?.status === 'active' ? 'default' : 'destructive'}>
+                      {viewingMember.user?.status === 'active' ? '활성' : '비활성'}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Students Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">학생 정보</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {viewingMember.students?.length > 0 ? (
+                    <div className="space-y-4">
+                      {viewingMember.students.map((student, idx) => (
+                        <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                          <div className="font-medium">{student.name}</div>
+                          {student.grade && <div className="text-sm text-gray-600">학년: {student.grade}</div>}
+                          {student.birthdate && <div className="text-sm text-gray-600">생년월일: {student.birthdate}</div>}
+                          {student.notes && <div className="text-sm text-gray-600">메모: {student.notes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">등록된 학생이 없습니다.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Admission Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">입학 진행 상황</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span>동의서</span>
+                    <Badge variant={viewingMember.consent_status === 'completed' ? 'default' : 'outline'}>
+                      {viewingMember.consent_status === 'completed' ? '완료' : '대기'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>서류 제출</span>
+                    <Badge variant={viewingMember.forms_status === 'completed' ? 'default' : 'outline'}>
+                      {viewingMember.forms_status === 'completed' ? '완료' : '대기'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>안내 확인</span>
+                    <Badge variant={viewingMember.guides_status === 'completed' ? 'default' : 'outline'}>
+                      {viewingMember.guides_status === 'completed' ? '완료' : '대기'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>체크리스트</span>
+                    <Badge variant={viewingMember.checklist_status === 'completed' ? 'default' : 'outline'}>
+                      {viewingMember.checklist_status === 'completed' ? '완료' : '대기'}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Exam Reservations */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">시험 예약 현황</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {viewingMember.exam_reservations?.length > 0 ? (
+                    <div className="space-y-3">
+                      {viewingMember.exam_reservations.map((reservation, idx) => (
+                        <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{reservation.brchType === 'junior' ? '초등부' : '중등부'} 시험</span>
+                            <Badge variant={
+                              reservation.status === 'confirmed' ? 'default' :
+                              reservation.status === 'requested' ? 'secondary' : 'destructive'
+                            }>
+                              {reservation.status === 'confirmed' ? '확정' :
+                               reservation.status === 'requested' ? '대기' : '취소'}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <div>캠퍼스: {reservation.campus}</div>
+                            <div>신청일: {new Date(reservation.created_at).toLocaleDateString('ko-KR')}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">예약 내역이 없습니다.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6 pt-6 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => handleResetPassword(viewingMember.user?.id)}
+                disabled={actionLoading}
+              >
+                <Key className="w-4 h-4 mr-2" />
+                비밀번호 초기화
+              </Button>
+              <Button 
+                variant={viewingMember.user?.status === 'active' ? 'destructive' : 'default'}
+                onClick={() => handleStatusChange(viewingMember.user?.id, viewingMember.user?.status === 'active' ? 'disabled' : 'active')}
+                disabled={actionLoading}
+              >
+                {viewingMember.user?.status === 'active' ? (
+                  <>
+                    <UserX className="w-4 h-4 mr-2" />
+                    계정 비활성화
+                  </>
+                ) : (
+                  <>
+                    <UserCheck className="w-4 h-4 mr-2" />
+                    계정 활성화
+                  </>
+                )}
+              </Button>
+              <Button onClick={() => setViewingMember(null)}>
+                닫기
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+};
+
 // Admin News Management Component
 const AdminNewsManagement = () => {
   const [adminToken] = useState(localStorage.getItem('adminToken'));
