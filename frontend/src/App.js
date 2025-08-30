@@ -1954,16 +1954,32 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-                  <BarChart3 className="w-6 h-6 text-blue-600" />
+                  <Users className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalNews}</p>
-                  <p className="text-gray-600">전체 뉴스</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.users.total}</p>
+                  <p className="text-gray-600">전체 회원</p>
+                  <p className="text-xs text-green-600">{stats.users.growth}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                  <BookmarkCheck className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.exam_reservations.total}</p>
+                  <p className="text-gray-600">시험 예약</p>
+                  <p className="text-xs text-orange-600">{stats.exam_reservations.pending}건 대기</p>
                 </div>
               </div>
             </CardContent>
@@ -1973,11 +1989,12 @@ const AdminDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center">
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <FileText className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{stats.publishedNews}</p>
-                  <p className="text-gray-600">게시된 뉴스</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.admissions.completed}</p>
+                  <p className="text-gray-600">입학 완료</p>
+                  <p className="text-xs text-blue-600">{stats.admissions.completion_rate}% 완료율</p>
                 </div>
               </div>
             </CardContent>
@@ -1986,12 +2003,13 @@ const AdminDashboard = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-                  <Clock className="w-6 h-6 text-orange-600" />
+                <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mr-4">
+                  <BarChart3 className="w-6 h-6 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{stats.draftNews}</p>
-                  <p className="text-gray-600">임시 저장</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.news.published}</p>
+                  <p className="text-gray-600">게시된 뉴스</p>
+                  <p className="text-xs text-gray-500">{stats.news.draft}건 대기</p>
                 </div>
               </div>
             </CardContent>
