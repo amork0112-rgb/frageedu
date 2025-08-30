@@ -163,6 +163,8 @@ async def signup(user_data: UserCreate):
     user = User(
         email=user_data.email,
         phone=user_data.phone,
+        parent_name=user_data.parent_name,
+        student_name=user_data.student_name,
         password_hash=hash_password(user_data.password)
     )
     
