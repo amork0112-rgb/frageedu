@@ -1810,7 +1810,12 @@ function App() {
           <Route path="/community" element={<Community />} />
           <Route path="/news" element={<News />} />
           <Route path="/market" element={<Market />} />
-          <Route path="/admissions" element={<AdmissionsPortal />} />
+          <Route path="/admissions" element={<AdmissionsPage />} />
+          <Route path="/portal" element={
+            <TokenAuthWrapper>
+              <InternalAdmissionsPortal />
+            </TokenAuthWrapper>
+          } />
           <Route path="/signup" element={<Signup onSignup={handleSignup} />} />
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           
