@@ -4011,7 +4011,8 @@ function App() {
 
   const handleLogin = (newToken, userData, household_token) => {
     login(newToken, userData);
-    window.location.href = `/dashboard?id=${household_token}`;
+    // Redirect to the new parent dashboard instead of old admission portal
+    window.location.href = `/parent/dashboard`;
   };
 
   return (
