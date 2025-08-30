@@ -70,7 +70,7 @@ class Student(BaseModel):
 class AuditLog(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     actor_user_id: str
-    action: str  # RESET_PW, DISABLE, ENABLE, EXPORT, IMPERSONATE
+    action: str  # RESET_PW, DISABLE, ENABLE, EXPORT, NOTIFY
     target_type: str  # User, Parent, Student
     target_id: str
     meta: Optional[Dict[str, Any]] = {}
@@ -291,6 +291,10 @@ class NewsResponse(BaseModel):
     created_by: str
     created_at: datetime
     updated_at: datetime
+
+class BulkNotifyRequest(BaseModel):
+    user_ids: List[str]
+    message: str
 
 # Utility functions
 def hash_password(password: str) -> str:
@@ -916,32 +920,6 @@ async def get_members(
     skip = (page - 1) * pageSize
     
     # Get users with parent information
-    pipeline = [
-        {"$match": mongo_query},
-        {
-            "$lookup": {
-                "from": "parents",
-                "localField": "id",
-                "foreignField": "user_id",
-                "as": "parent_info"
-            }
-        },
-        {"$unwind": "$parent_info"},
-        {"$match": {"parent_info." + k: v for k, v in parent_query.items()}},
-        {
-            "$lookup": {
-                "from": "students",
-                "localField": "parent_info.id",
-                "foreignField": "parent_id",
-                "as": "students"
-            }
-        },
-        {"$sort": {sort_field: sort_direction}},
-        {"$skip": skip},
-        {"$limit": pageSize}
-    ]
-    
-    # Execute aggregation - fallback to simple query
     try:
         # For now, use simpler approach since aggregation might be complex
         users = await db.users.find(mongo_query).sort(sort_field, sort_direction).skip(skip).limit(pageSize).to_list(pageSize)
@@ -1093,7 +1071,7 @@ async def bulk_export_members(user_ids: List[str], current_admin: AdminResponse 
     }
 
 @api_router.post("/admin/members/bulk/notify")
-async def bulk_notify_members(user_ids: List[str], message: str, current_admin: AdminResponse = Depends(get_current_admin)):
+async def bulk_notify_members(request: BulkNotifyRequest, current_admin: AdminResponse = Depends(get_current_admin)):
     # TODO: Implement AlimTalk integration
     # For now, just log the action
     
@@ -1105,13 +1083,13 @@ async def bulk_notify_members(user_ids: List[str], message: str, current_admin: 
         target_id="bulk",
         meta={
             "admin_username": current_admin.username,
-            "notify_count": len(user_ids),
-            "message_preview": message[:100]
+            "notify_count": len(request.user_ids),
+            "message_preview": request.message[:100]
         }
     )
     
     return {
-        "message": f"Notification sent to {len(user_ids)} members",
+        "message": f"Notification sent to {len(request.user_ids)} members",
         "status": "success"
     }
 
@@ -1193,8 +1171,7 @@ async def get_admission_overview(current_admin: AdminResponse = Depends(get_curr
         user = await db.users.find_one({"household_token": admission["household_token"]})
         if user:
             admission["user_info"] = {
-                "parent_name": user.get("parent_name", ""),
-                "student_name": user.get("student_name", ""),
+                "parent_name": user.get("name", ""),
                 "email": user.get("email", "")
             }
     
@@ -1226,8 +1203,7 @@ async def get_exam_reservations(current_admin: AdminResponse = Depends(get_curre
         user = await db.users.find_one({"household_token": reservation["household_token"]})
         if user:
             reservation["user_info"] = {
-                "parent_name": user.get("parent_name", ""),
-                "student_name": user.get("student_name", ""),
+                "parent_name": user.get("name", ""),
                 "email": user.get("email", ""),
                 "phone": user.get("phone", "")
             }
