@@ -1041,6 +1041,298 @@ async def get_class_assignments(current_user: UserResponse = Depends(get_current
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching class assignments: {str(e)}")
 
+# Frage Market API Routes
+@api_router.get("/market/products")
+async def get_products(
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+):
+    """Get products with filtering and pagination"""
+    try:
+        # Build query
+        query = {"is_available": True}
+        if category:
+            query["category"] = category
+        if search:
+            query["$or"] = [
+                {"name": {"$regex": search, "$options": "i"}},
+                {"description": {"$regex": search, "$options": "i"}},
+                {"tags": {"$in": [search]}}
+            ]
+        
+        # Calculate skip
+        skip = (page - 1) * limit
+        
+        # Sort configuration
+        sort_direction = -1 if sort_order == "desc" else 1
+        
+        # Get products
+        products = await db.products.find(query).sort(sort_by, sort_direction).skip(skip).limit(limit).to_list(limit)
+        total_count = await db.products.count_documents(query)
+        
+        # Clean products
+        for product in products:
+            if '_id' in product:
+                del product['_id']
+        
+        return {
+            "products": [ProductResponse(**product) for product in products],
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "total_pages": (total_count + limit - 1) // limit
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching products: {str(e)}")
+
+@api_router.get("/market/products/{product_id}")
+async def get_product(product_id: str):
+    """Get single product details"""
+    try:
+        product = await db.products.find_one({"id": product_id, "is_available": True})
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        if '_id' in product:
+            del product['_id']
+        
+        return ProductResponse(**product)
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching product: {str(e)}")
+
+@api_router.get("/market/categories")
+async def get_categories():
+    """Get available product categories"""
+    try:
+        categories = await db.products.distinct("category", {"is_available": True})
+        
+        # Get category counts
+        category_counts = {}
+        for category in categories:
+            count = await db.products.count_documents({"category": category, "is_available": True})
+            category_counts[category] = count
+        
+        return {
+            "categories": [
+                {"name": cat, "count": category_counts[cat]} 
+                for cat in categories
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching categories: {str(e)}")
+
+@api_router.get("/market/featured")
+async def get_featured_products(limit: int = 8):
+    """Get featured products"""
+    try:
+        products = await db.products.find({
+            "is_available": True, 
+            "is_featured": True
+        }).limit(limit).to_list(limit)
+        
+        # Clean products
+        for product in products:
+            if '_id' in product:
+                del product['_id']
+        
+        return {"products": [ProductResponse(**product) for product in products]}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching featured products: {str(e)}")
+
+@api_router.post("/market/cart/add")
+async def add_to_cart(cart_request: AddToCartRequest, current_user: UserResponse = Depends(get_current_user)):
+    """Add item to cart"""
+    try:
+        # Check if product exists and is available
+        product = await db.products.find_one({"id": cart_request.product_id, "is_available": True})
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        # Check if item already exists in cart
+        existing_item = await db.cart_items.find_one({
+            "user_id": current_user.id,
+            "product_id": cart_request.product_id,
+            "selected_size": cart_request.selected_size,
+            "selected_color": cart_request.selected_color
+        })
+        
+        if existing_item:
+            # Update quantity
+            new_quantity = existing_item["quantity"] + cart_request.quantity
+            await db.cart_items.update_one(
+                {"id": existing_item["id"]},
+                {"$set": {"quantity": new_quantity}}
+            )
+        else:
+            # Create new cart item
+            cart_item = CartItem(
+                user_id=current_user.id,
+                product_id=cart_request.product_id,
+                quantity=cart_request.quantity,
+                selected_size=cart_request.selected_size,
+                selected_color=cart_request.selected_color,
+                price_at_time=product["price"]
+            )
+            
+            cart_dict = cart_item.dict()
+            cart_dict['created_at'] = cart_dict['created_at'].isoformat()
+            await db.cart_items.insert_one(cart_dict)
+        
+        return {"message": "Item added to cart successfully"}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error adding to cart: {str(e)}")
+
+@api_router.get("/market/cart")
+async def get_cart(current_user: UserResponse = Depends(get_current_user)):
+    """Get user's cart"""
+    try:
+        cart_items = await db.cart_items.find({"user_id": current_user.id}).to_list(100)
+        
+        items = []
+        total_amount = 0
+        total_items = 0
+        
+        for cart_item in cart_items:
+            # Get product details
+            product = await db.products.find_one({"id": cart_item["product_id"]})
+            if product and product.get("is_available", True):
+                item_total = cart_item["price_at_time"] * cart_item["quantity"]
+                total_amount += item_total
+                total_items += cart_item["quantity"]
+                
+                items.append({
+                    "cart_item_id": cart_item["id"],
+                    "product": ProductResponse(**{k: v for k, v in product.items() if k != '_id'}),
+                    "quantity": cart_item["quantity"],
+                    "selected_size": cart_item.get("selected_size"),
+                    "selected_color": cart_item.get("selected_color"),
+                    "price_at_time": cart_item["price_at_time"],
+                    "item_total": item_total
+                })
+        
+        return CartResponse(
+            items=items,
+            total_items=total_items,
+            total_amount=total_amount
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching cart: {str(e)}")
+
+@api_router.delete("/market/cart/{cart_item_id}")
+async def remove_from_cart(cart_item_id: str, current_user: UserResponse = Depends(get_current_user)):
+    """Remove item from cart"""
+    try:
+        result = await db.cart_items.delete_one({
+            "id": cart_item_id,
+            "user_id": current_user.id
+        })
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Cart item not found")
+        
+        return {"message": "Item removed from cart"}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error removing from cart: {str(e)}")
+
+@api_router.post("/market/orders")
+async def create_order(order_request: CreateOrderRequest, current_user: UserResponse = Depends(get_current_user)):
+    """Create order from cart"""
+    try:
+        # Get cart items
+        cart_items = await db.cart_items.find({"user_id": current_user.id}).to_list(100)
+        
+        if not cart_items:
+            raise HTTPException(status_code=400, detail="Cart is empty")
+        
+        # Prepare order items
+        order_items = []
+        total_amount = 0
+        
+        for cart_item in cart_items:
+            product = await db.products.find_one({"id": cart_item["product_id"]})
+            if product and product.get("is_available", True):
+                item_total = cart_item["price_at_time"] * cart_item["quantity"]
+                total_amount += item_total
+                
+                order_items.append({
+                    "product_id": cart_item["product_id"],
+                    "product_name": product["name"],
+                    "quantity": cart_item["quantity"],
+                    "selected_size": cart_item.get("selected_size"),
+                    "selected_color": cart_item.get("selected_color"),
+                    "price_at_time": cart_item["price_at_time"],
+                    "item_total": item_total
+                })
+        
+        # Create order
+        order = Order(
+            user_id=current_user.id,
+            items=order_items,
+            total_amount=total_amount,
+            shipping_address=order_request.shipping_address,
+            contact_info=order_request.contact_info,
+            payment_method=order_request.payment_method,
+            notes=order_request.notes
+        )
+        
+        order_dict = order.dict()
+        order_dict['created_at'] = order_dict['created_at'].isoformat()
+        order_dict['updated_at'] = order_dict['updated_at'].isoformat()
+        await db.orders.insert_one(order_dict)
+        
+        # Clear cart
+        await db.cart_items.delete_many({"user_id": current_user.id})
+        
+        return OrderResponse(
+            id=order.id,
+            order_number=order.order_number,
+            items=order_items,
+            total_amount=total_amount,
+            status=order.status,
+            payment_status=order.payment_status,
+            created_at=order.created_at
+        )
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error creating order: {str(e)}")
+
+@api_router.get("/market/orders")
+async def get_orders(current_user: UserResponse = Depends(get_current_user)):
+    """Get user's orders"""
+    try:
+        orders = await db.orders.find({"user_id": current_user.id}).sort("created_at", -1).to_list(50)
+        
+        # Clean orders
+        for order in orders:
+            if '_id' in order:
+                del order['_id']
+        
+        return {"orders": orders}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching orders: {str(e)}")
+
 # Admin Routes
 @api_router.post("/admin/signup")
 async def create_admin(admin_data: AdminCreate):
