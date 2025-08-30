@@ -235,6 +235,31 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=['HS256'])
+        admin_id = payload.get('admin_id')
+        if not admin_id:
+            raise HTTPException(status_code=401, detail="Invalid admin token")
+        
+        admin = await db.admins.find_one({"id": admin_id})
+        if not admin:
+            raise HTTPException(status_code=401, detail="Admin not found")
+        
+        return AdminResponse(**admin)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+def create_admin_jwt_token(admin_id: str, username: str) -> str:
+    payload = {
+        'admin_id': admin_id,
+        'username': username,
+        'exp': datetime.now(timezone.utc).timestamp() + (24 * 60 * 60)  # 24 hours
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
 # Routes
 @api_router.get("/")
 async def root():
