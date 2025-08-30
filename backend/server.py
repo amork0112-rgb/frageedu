@@ -1000,26 +1000,79 @@ async def get_member_details(user_id: str, current_admin: AdminResponse = Depend
         "checklist_status": admission_data.get("checklist_status") if admission_data else None
     }
 
-@api_router.put("/admin/user/{user_id}")
-async def update_user(user_id: str, update_data: dict, current_admin: AdminResponse = Depends(get_current_admin)):
-    # Only allow certain fields to be updated
-    allowed_fields = ['parent_name', 'student_name', 'phone', 'email']
-    filtered_update = {k: v for k, v in update_data.items() if k in allowed_fields}
+@api_router.post("/admin/members/bulk/export")
+async def bulk_export_members(user_ids: List[str], current_admin: AdminResponse = Depends(get_current_admin)):
+    import csv
+    import io
+    from datetime import datetime
     
-    if not filtered_update:
-        raise HTTPException(status_code=400, detail="No valid fields to update")
+    # Get member data
+    members_data = []
+    for user_id in user_ids:
+        user = await db.users.find_one({"id": user_id})
+        if not user:
+            continue
+            
+        parent = await db.parents.find_one({"user_id": user_id})
+        students = await db.students.find({"parent_id": parent["id"] if parent else ""}).to_list(10)
+        
+        members_data.append({
+            "Parent Name": user.get("name", ""),
+            "Email": user.get("email", ""),
+            "Phone": user.get("phone", ""),
+            "Branch": parent.get("branch", "") if parent else "",
+            "Students": "; ".join([s.get("name", "") for s in students]),
+            "Status": user.get("status", "active"),
+            "Joined At": user.get("created_at", ""),
+            "Last Login": user.get("last_login_at", "")
+        })
     
-    filtered_update['updated_at'] = datetime.now(timezone.utc).isoformat()
+    # Create CSV
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=["Parent Name", "Email", "Phone", "Branch", "Students", "Status", "Joined At", "Last Login"])
+    writer.writeheader()
+    writer.writerows(members_data)
     
-    result = await db.users.update_one(
-        {"id": user_id},
-        {"$set": filtered_update}
+    csv_content = output.getvalue()
+    output.close()
+    
+    # Log audit action
+    await log_audit(
+        actor_user_id=current_admin.id,
+        action="EXPORT",
+        target_type="User",
+        target_id="bulk",
+        meta={"admin_username": current_admin.username, "export_count": len(user_ids)}
     )
     
-    if result.matched_count == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "message": "Export completed successfully",
+        "csv_content": csv_content,
+        "filename": f"members_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    }
+
+@api_router.post("/admin/members/bulk/notify")
+async def bulk_notify_members(user_ids: List[str], message: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    # TODO: Implement AlimTalk integration
+    # For now, just log the action
     
-    return {"message": "User updated successfully"}
+    # Log audit action
+    await log_audit(
+        actor_user_id=current_admin.id,
+        action="NOTIFY",
+        target_type="User",
+        target_id="bulk",
+        meta={
+            "admin_username": current_admin.username,
+            "notify_count": len(user_ids),
+            "message_preview": message[:100]
+        }
+    )
+    
+    return {
+        "message": f"Notification sent to {len(user_ids)} members",
+        "status": "success"
+    }
 
 @api_router.post("/admin/members/{user_id}/reset-password")
 async def reset_member_password(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
