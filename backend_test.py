@@ -15,14 +15,17 @@ class FrageEDUAPITester:
         self.tests_run = 0
         self.tests_passed = 0
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None, params=None):
         """Run a single API test"""
         url = f"{self.api_url}/{endpoint}" if not endpoint.startswith('http') else endpoint
         
         if headers is None:
             headers = {'Content-Type': 'application/json'}
         
-        if self.token and 'Authorization' not in headers:
+        # Use admin token for admin endpoints
+        if endpoint.startswith('admin/') and self.admin_token:
+            headers['Authorization'] = f'Bearer {self.admin_token}'
+        elif self.token and 'Authorization' not in headers:
             headers['Authorization'] = f'Bearer {self.token}'
 
         self.tests_run += 1
@@ -31,14 +34,18 @@ class FrageEDUAPITester:
         print(f"   Method: {method}")
         if data:
             print(f"   Data: {json.dumps(data, indent=2)}")
+        if params:
+            print(f"   Params: {params}")
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers, timeout=10)
+                response = requests.get(url, headers=headers, params=params, timeout=10)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers, timeout=10)
+                response = requests.post(url, json=data, headers=headers, params=params, timeout=10)
             elif method == 'PUT':
-                response = requests.put(url, json=data, headers=headers, timeout=10)
+                response = requests.put(url, json=data, headers=headers, params=params, timeout=10)
+            elif method == 'PATCH':
+                response = requests.patch(url, json=data, headers=headers, params=params, timeout=10)
 
             print(f"   Response Status: {response.status_code}")
             
