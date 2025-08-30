@@ -112,6 +112,29 @@ class FormsUpdate(BaseModel):
 class ChecklistUpdate(BaseModel):
     items: List[Dict[str, Any]]
 
+class ExamReservation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    household_token: str
+    user_id: str
+    brchType: str  # junior, middle, kinder
+    campus: str
+    slot_id: str
+    slot_start: datetime
+    slot_end: datetime
+    level_track: Optional[str] = None
+    notes: Optional[str] = None
+    status: str = "requested"  # requested, confirmed, cancelled
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ExamReservationCreate(BaseModel):
+    brchType: str
+    campus: str
+    slot_id: str
+    slot_start: str  # ISO string
+    slot_end: str    # ISO string
+    level_track: Optional[str] = None
+    notes: Optional[str] = None
+
 # Utility functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
