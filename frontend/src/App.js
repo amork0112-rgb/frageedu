@@ -1175,9 +1175,9 @@ const Programs = () => {
       id: 'kinder',
       title: 'Kindergarten English',
       subtitle: '유치부 (5-7세)',
-      description: '놀이 중심의 영어 교육으로 자연스러운 언어 습득을 도와드립니다.',
-      features: ['스토리텔링', '신체 활동', '창의적 표현', '기초 파닉스'],
-      highlights: ['원어민과 함께하는 즐거운 수업', '개별 맞춤 진도', '창의력 개발 중심']
+      description: '호기심이 가장 활발한 시기에 영어를 자연스럽게 경험하며, 사고력과 표현력을 함께 키워갑니다.',
+      features: ['스토리 기반 활동', '프로젝트 놀이 학습', '창의적 표현 훈련', '기초 파닉스 및 읽기 준비'],
+      highlights: ['원어민과 상호작용하며 배우는 몰입형 수업', '아이 수준에 맞춘 개별 맞춤 진도', '생각을 말하고 표현하는 창의력 중심 교육']
     },
     {
       id: 'junior',
@@ -1374,7 +1374,7 @@ const News = () => {
       <section className="pt-24 pb-16 bg-gradient-to-br from-purple-50 to-indigo-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
-            Frage EDU News
+            Frage Edu News
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             최신 소식과 교육 정보를 확인하세요
@@ -2533,7 +2533,7 @@ const WelcomeAdmissionGuide = () => {
                   📞 이제 상담 예약을 해보세요!
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Frage EDU의 전문 상담사가 {currentBranch.name} 과정에 대해 자세히 안내해드립니다.
+                  {currentBranch.name} 과정에 대해 자세히 안내해드립니다.
                   상담 후 레벨테스트 또는 입학시험 일정을 잡으실 수 있습니다.
                 </p>
                 <div className="text-sm text-purple-700 bg-purple-50 p-3 rounded-lg">
@@ -2558,15 +2558,15 @@ const WelcomeAdmissionGuide = () => {
                         1단계. 상담 예약
                       </h3>
                       <p className="text-sm text-blue-700 mb-4">
-                        전화 또는 방문 상담을 통해 자녀에게 맞는 프로그램을 안내받으세요
+                        방문 상담을 통해 자녀에게 맞는 프로그램을 안내받으세요
                       </p>
                       <div className="space-y-2 mb-4 text-sm text-blue-600">
-                        <p>📞 전화: 053-754-0577</p>
+                        <p>📞 문의 전화: 053-754-0577</p>
                         <p>📧 이메일: frage0577@gmail.com</p>
                         <p>🕐 상담시간: 평일 9:00-18:00</p>
                       </div>
                       <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                        전화 상담 예약
+                        방문 상담 예약
                       </Button>
                     </div>
                   </div>
