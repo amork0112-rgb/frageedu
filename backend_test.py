@@ -1092,7 +1092,7 @@ class FrageEDUAPITester:
             "phone": "010-1234-5678",
             "name": f"김학부모{timestamp}",
             "student_name": f"김학생{timestamp}",
-            "student_birthdate": "2015-03-15",
+            "student_birthdate": "2015-03-15",  # Added required field
             "password": "ParentEnroll123!",
             "terms_accepted": True,
             "branch": "junior"
@@ -1104,13 +1104,28 @@ class FrageEDUAPITester:
             self.parent_user_id = response['user']['id']
             self.parent_household_token = response['household_token']
             
-            # Get student ID from response
-            if 'students' in response and len(response['students']) > 0:
-                self.test_student_id = response['students'][0]['id']
-                print(f"   ✅ Parent enrollment test data created")
-                print(f"   Parent Token: {self.parent_token[:20]}...")
-                print(f"   Student ID: {self.test_student_id}")
-                return True
+            # Get student ID - need to query the database or use a different approach
+            # For now, let's get the student ID from the members list using admin token
+            if hasattr(self, 'admin_token') and self.admin_token:
+                # Get member details to find student ID
+                member_success, member_response = self.run_test(
+                    "Get Member Details for Student ID", 
+                    "GET", 
+                    f"admin/members/{self.parent_user_id}", 
+                    200,
+                    headers={'Authorization': f'Bearer {self.admin_token}'}
+                )
+                
+                if member_success and 'students' in member_response and len(member_response['students']) > 0:
+                    self.test_student_id = member_response['students'][0]['id']
+                    print(f"   ✅ Parent enrollment test data created")
+                    print(f"   Parent Token: {self.parent_token[:20]}...")
+                    print(f"   Student ID: {self.test_student_id}")
+                    return True
+                else:
+                    print("   ❌ Could not get student ID from member details")
+            else:
+                print("   ❌ No admin token available to get student ID")
         
         return False
 
