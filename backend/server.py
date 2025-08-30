@@ -71,6 +71,8 @@ class Student(BaseModel):
     status: str = "pending"  # pending, reserved_test, admitted_pending, enrolled, leave, withdrawn
     requires_exam: bool = True  # False for kinder_regular
     notes: Optional[str] = None
+    photo_url: Optional[str] = None  # Student photo URL
+    photo_updated_at: Optional[datetime] = None  # When photo was last updated
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
