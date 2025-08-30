@@ -1245,47 +1245,24 @@ const Programs = () => {
         </div>
       </section>
 
-      {/* Additional Info Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">입학 절차 안내</h2>
-            <p className="text-xl text-gray-600">간단한 절차로 Frage EDU에 합류하세요</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">1. 프로그램 선택</h3>
-              <p className="text-gray-600 text-sm">연령에 맞는 적합한 프로그램을 선택하세요</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">2. 시험 예약</h3>
-              <p className="text-gray-600 text-sm">온라인으로 편리하게 입학시험을 예약하세요</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookmarkCheck className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">3. 시험 응시</h3>
-              <p className="text-gray-600 text-sm">예약된 일시에 캠퍼스에서 레벨테스트를 받으세요</p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Award className="w-8 h-8 text-orange-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">4. 수업 시작</h3>
-              <p className="text-gray-600 text-sm">결과 확인 후 적합한 클래스에서 학습을 시작하세요</p>
-            </div>
-          </div>
+      {/* CTA Section */}
+      <section className="py-16 bg-gradient-to-br from-purple-50 to-indigo-50">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            입학을 원하시나요?
+          </h2>
+          <p className="text-xl text-gray-600 mb-8">
+            자세한 입학 절차와 시험 일정을 확인해보세요
+          </p>
+          
+          <Button 
+            size="lg" 
+            className="bg-purple-600 hover:bg-purple-700 px-8 py-4 text-lg"
+            onClick={() => window.location.href = '/admissions'}
+          >
+            입학 안내 보기
+            <ArrowRight className="w-5 h-5 ml-2" />
+          </Button>
         </div>
       </section>
 
