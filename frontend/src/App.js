@@ -5997,6 +5997,7 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/students" element={<AdminStudentManagement />} />
           <Route path="/admin/members" element={<AdminMemberManagement />} />
           <Route path="/admin/news" element={<AdminNewsManagement />} />
           <Route path="/admin/news/new" element={<AdminNewsEditor />} />
