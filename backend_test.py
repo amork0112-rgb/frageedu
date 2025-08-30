@@ -88,6 +88,7 @@ class FrageEDUAPITester:
             "phone": "010-1234-5678",
             "name": f"김학부모{timestamp}",
             "student_name": f"김학생{timestamp}",
+            "student_birthdate": "2015-03-15",  # Added required field
             "password": "TestPassword123!",
             "terms_accepted": True,
             "branch": "junior"
