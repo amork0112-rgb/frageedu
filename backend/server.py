@@ -963,8 +963,9 @@ async def get_members(
         logging.error(f"Error in get_members: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@api_router.get("/admin/user/{user_id}")
-async def get_user_details(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
+@api_router.get("/admin/members/{user_id}")
+async def get_member_details(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    # Get user
     user = await db.users.find_one({"id": user_id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -973,14 +974,30 @@ async def get_user_details(user_id: str, current_admin: AdminResponse = Depends(
     if 'password_hash' in user:
         del user['password_hash']
     
-    # Get related data
+    # Get parent info
+    parent = await db.parents.find_one({"user_id": user_id})
+    if not parent:
+        raise HTTPException(status_code=404, detail="Parent info not found")
+    
+    # Get students
+    students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+    
+    # Get admission data
     admission_data = await db.admission_data.find_one({"household_token": user['household_token']})
+    
+    # Get exam reservations
     exam_reservations = await db.exam_reservations.find({"household_token": user['household_token']}).to_list(10)
     
     return {
-        "user": user,
+        "user": UserResponse(**user),
+        "parent": ParentResponse(**parent),
+        "students": [StudentResponse(**student) for student in students],
         "admission_data": admission_data,
-        "exam_reservations": exam_reservations
+        "exam_reservations": exam_reservations,
+        "consent_status": admission_data.get("consent_status") if admission_data else None,
+        "forms_status": admission_data.get("forms_status") if admission_data else None,
+        "guides_status": admission_data.get("guides_status") if admission_data else None,
+        "checklist_status": admission_data.get("checklist_status") if admission_data else None
     }
 
 @api_router.put("/admin/user/{user_id}")
