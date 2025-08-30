@@ -79,18 +79,19 @@ class ClassAssignment(BaseModel):
     student_id: str
     class_id: str
     class_name: str
-    teacher_name: str
+    homeroom_teacher: str  # Updated field name
     teacher_id: Optional[str] = None
     weekday: str  # "Monday,Wednesday,Friday"
     time_start: str  # "16:00"
     time_end: str  # "17:30"
     classroom: str
     level: Optional[str] = None
-    start_date: datetime
+    effective_from: datetime  # Updated field name
     end_date: Optional[datetime] = None
     status: str = "active"  # active, completed, suspended
     materials: List[str] = []
     assigned_by: str  # admin_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ExamResult(BaseModel):
