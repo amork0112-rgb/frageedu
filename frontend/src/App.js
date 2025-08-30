@@ -1264,16 +1264,7 @@ const Programs = () => {
   );
 };
 
-const Community = () => (
-  <div className="min-h-screen bg-white pt-20">
-    <Header />
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">Community</h1>
-      <p className="text-xl text-gray-600">커뮤니티 페이지 (구현 예정)</p>
-    </div>
-    <Footer />
-  </div>
-);
+
 
 const News = () => {
   const [activeCategory, setActiveCategory] = useState('전체');
