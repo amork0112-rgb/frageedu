@@ -1388,11 +1388,14 @@ class FrageEDUAPITester:
         )
         
         if success and response:
+            # Check if response has 'addresses' key (wrapped response)
+            addresses = response.get('addresses', response)
+            
             # Verify response is a list of addresses
-            if isinstance(response, list):
-                print(f"✅ Address search returned {len(response)} results")
-                if len(response) > 0:
-                    first_address = response[0]
+            if isinstance(addresses, list):
+                print(f"✅ Address search returned {len(addresses)} results")
+                if len(addresses) > 0:
+                    first_address = addresses[0]
                     required_fields = ['address_name', 'postal_code']
                     for field in required_fields:
                         if field not in first_address:
