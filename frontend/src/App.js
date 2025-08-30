@@ -2167,6 +2167,270 @@ const AdminNewsManagement = () => {
   );
 };
 
+// Rich Text Editor Component
+const RichTextEditor = ({ content, onChange }) => {
+  const [editorContent, setEditorContent] = useState(content);
+  const [showPreview, setShowPreview] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const textareaRef = useState(null);
+  const fileInputRef = useState(null);
+
+  useEffect(() => {
+    setEditorContent(content);
+  }, [content]);
+
+  const handleContentChange = (value) => {
+    setEditorContent(value);
+    onChange(value);
+  };
+
+  const insertText = (before, after = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = editorContent.substring(start, end);
+    const replacement = `${before}${selectedText}${after}`;
+    
+    const newContent = 
+      editorContent.substring(0, start) + 
+      replacement + 
+      editorContent.substring(end);
+    
+    handleContentChange(newContent);
+    
+    // Set cursor position
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = start + before.length + selectedText.length;
+      textarea.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  };
+
+  const handleImageUpload = async (file) => {
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const adminToken = localStorage.getItem('adminToken');
+      const response = await axios.post(`${BACKEND_URL}/api/admin/upload-image-base64`, formData, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      const imageMarkdown = `\n![${file.name}](${response.data.data_url})\n`;
+      const newContent = editorContent + imageMarkdown;
+      handleContentChange(newContent);
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      alert('이미지 업로드에 실패했습니다.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleImageUpload(file);
+    }
+    e.target.value = ''; // Reset input
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find(file => file.type.startsWith('image/'));
+    if (imageFile) {
+      handleImageUpload(imageFile);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const renderPreview = (text) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+      .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+      .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+      .replace(/^\> (.*$)/gm, '<blockquote>$1</blockquote>')
+      .replace(/^\- (.*$)/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 10px 0;" />')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/\n/g, '<br />');
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 border rounded-lg">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => insertText('**', '**')}
+          title="Bold"
+        >
+          <Bold className="w-4 h-4" />
+        </Button>
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => insertText('*', '*')}
+          title="Italic"
+        >
+          <Italic className="w-4 h-4" />
+        </Button>
+
+        <Separator orientation="vertical" className="h-6" />
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => insertText('# ')}
+          title="Heading 1"
+        >
+          <Type className="w-4 h-4" />
+        </Button>
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => insertText('## ')}
+          title="Heading 2"
+        >
+          <Type className="w-3 h-3" />
+        </Button>
+
+        <Separator orientation="vertical" className="h-6" />
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => insertText('- ')}
+          title="List"
+        >
+          <List className="w-4 h-4" />
+        </Button>
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => insertText('> ')}
+          title="Quote"
+        >
+          <Quote className="w-4 h-4" />
+        </Button>
+
+        <Separator orientation="vertical" className="h-6" />
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingImage}
+          title="Upload Image"
+        >
+          {uploadingImage ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+          ) : (
+            <ImageIcon className="w-4 h-4" />
+          )}
+        </Button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            type="button"
+            variant={showPreview ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setShowPreview(!showPreview)}
+          >
+            <Eye className="w-4 h-4 mr-1" />
+            {showPreview ? "편집" : "미리보기"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Editor Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Text Editor */}
+        <div className={showPreview ? "hidden lg:block" : ""}>
+          <Label>내용 작성</Label>
+          <div 
+            className="relative"
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+          >
+            <Textarea
+              ref={textareaRef}
+              value={editorContent}
+              onChange={(e) => handleContentChange(e.target.value)}
+              placeholder="마크다운 형식으로 작성하세요...&#10;&#10;**굵게** *기울임* &#10;# 제목 1&#10;## 제목 2&#10;- 목록&#10;> 인용&#10;&#10;이미지를 드래그하여 추가하거나 이미지 버튼을 클릭하세요."
+              rows={20}
+              className="resize-none"
+              required
+            />
+            {uploadingImage && (
+              <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+                <div className="bg-white p-4 rounded-lg">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
+                  <p className="text-sm">이미지 업로드 중...</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className={showPreview ? "" : "hidden lg:block"}>
+          <Label>미리보기</Label>
+          <div className="border rounded-lg p-4 min-h-[500px] bg-white overflow-y-auto">
+            {editorContent ? (
+              <div 
+                className="prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: renderPreview(editorContent) }}
+              />
+            ) : (
+              <p className="text-gray-500 text-center mt-20">
+                내용을 입력하면 여기에 미리보기가 표시됩니다
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Help Text */}
+      <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+        <strong>마크다운 사용법:</strong> **굵게**, *기울임*, # 제목, - 목록, > 인용, 이미지는 드래그하거나 업로드 버튼 사용
+      </div>
+    </div>
+  );
+};
+
 // Admin News Editor Component
 const AdminNewsEditor = () => {
   const [adminToken] = useState(localStorage.getItem('adminToken'));
