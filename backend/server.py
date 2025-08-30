@@ -37,6 +37,8 @@ class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: str
     phone: str
+    parent_name: str
+    student_name: str
     password_hash: str
     household_token: str = Field(default_factory=lambda: str(uuid.uuid4()))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -45,6 +47,8 @@ class User(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     phone: str
+    parent_name: str
+    student_name: str
     password: str
     terms_accepted: bool
 
