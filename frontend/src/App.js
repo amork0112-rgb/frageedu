@@ -1903,7 +1903,12 @@ const AdminLogin = () => {
 // Admin Dashboard Component
 const AdminDashboard = () => {
   const [adminToken] = useState(localStorage.getItem('adminToken'));
-  const [stats, setStats] = useState({ totalNews: 0, publishedNews: 0, draftNews: 0 });
+  const [stats, setStats] = useState({
+    users: { total: 0, today: 0, growth: '+0%' },
+    news: { total: 0, published: 0, draft: 0 },
+    exam_reservations: { total: 0, pending: 0, confirmed: 0 },
+    admissions: { total: 0, completed: 0, completion_rate: 0 }
+  });
 
   useEffect(() => {
     if (!adminToken) {
@@ -1915,15 +1920,10 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${API}/admin/news`, {
+      const response = await axios.get(`${API}/admin/dashboard-stats`, {
         headers: { 'Authorization': `Bearer ${adminToken}` }
       });
-      const articles = response.data.articles;
-      setStats({
-        totalNews: articles.length,
-        publishedNews: articles.filter(a => a.published).length,
-        draftNews: articles.filter(a => !a.published).length
-      });
+      setStats(response.data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
