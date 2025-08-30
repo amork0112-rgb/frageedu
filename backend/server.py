@@ -1021,19 +1021,38 @@ async def update_user(user_id: str, update_data: dict, current_admin: AdminRespo
     
     return {"message": "User updated successfully"}
 
-@api_router.post("/admin/user/{user_id}/reset-password")
-async def reset_user_password(user_id: str, new_password: str, current_admin: AdminResponse = Depends(get_current_admin)):
-    hashed_password = hash_password(new_password)
+@api_router.post("/admin/members/{user_id}/reset-password")
+async def reset_member_password(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    # Generate a temporary password
+    import secrets
+    import string
+    temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+    
+    hashed_password = hash_password(temp_password)
     
     result = await db.users.update_one(
         {"id": user_id},
-        {"$set": {"password_hash": hashed_password, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {"password_hash": hashed_password}}
     )
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"message": "Password reset successfully"}
+    # Log audit action
+    await log_audit(
+        actor_user_id=current_admin.id,
+        action="RESET_PW",
+        target_type="User",
+        target_id=user_id,
+        meta={"admin_username": current_admin.username}
+    )
+    
+    # TODO: Send email with new password
+    
+    return {
+        "message": "Password reset successfully",
+        "temporary_password": temp_password  # In production, this should be sent via email
+    }
 
 @api_router.put("/admin/user/{user_id}/deactivate")
 async def deactivate_user(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
