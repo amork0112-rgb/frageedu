@@ -4850,6 +4850,7 @@ function App() {
 
   const handleSignup = (newToken, userData, household_token) => {
     login(newToken, userData);
+    // Redirect to welcome page with admission guide
     window.location.href = `/dashboard?id=${household_token}`;
   };
 
