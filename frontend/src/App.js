@@ -2518,6 +2518,7 @@ const ResetPassword = ({ onBack }) => {
 
 // Login Component (Updated with Find ID/Password links)
 const Login = ({ onLogin }) => {
+  const [currentView, setCurrentView] = useState('login'); // 'login', 'findId', 'resetPassword'
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -2540,6 +2541,32 @@ const Login = ({ onLogin }) => {
     }
   };
 
+  // Show different components based on current view
+  if (currentView === 'findId') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
+        <Header />
+        <div className="flex items-center justify-center px-4 py-16">
+          <FindUsername onBack={() => setCurrentView('login')} />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (currentView === 'resetPassword') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
+        <Header />
+        <div className="flex items-center justify-center px-4 py-16">
+          <ResetPassword onBack={() => setCurrentView('login')} />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Default login view
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
       <Header />
@@ -2582,6 +2609,25 @@ const Login = ({ onLogin }) => {
               <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
                 {loading ? "로그인 중..." : "로그인"}
               </Button>
+              
+              {/* Find ID/Password Links */}
+              <div className="flex justify-center space-x-4 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('findId')}
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  아이디 찾기
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('resetPassword')}
+                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  비밀번호 찾기
+                </button>
+              </div>
               
               <div className="text-center mt-4">
                 <p className="text-sm text-gray-600">
