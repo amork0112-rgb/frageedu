@@ -2885,6 +2885,7 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/members" element={<AdminMemberManagement />} />
           <Route path="/admin/news" element={<AdminNewsManagement />} />
           <Route path="/admin/news/new" element={<AdminNewsEditor />} />
           <Route path="/admin/news/edit/:id" element={<AdminNewsEditor />} />
