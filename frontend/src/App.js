@@ -2069,6 +2069,212 @@ const AdminDashboard = () => {
   );
 };
 
+// Parent Dashboard Component
+const ParentDashboard = () => {
+  const { user, token } = useAuth();
+  const [studentInfo, setStudentInfo] = useState(null);
+  const [examHistory, setExamHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    fetchDashboardData();
+  }, [token]);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch student information and exam history
+      const response = await axios.get(`${API}/parent/dashboard`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setStudentInfo(response.data.student);
+      setExamHistory(response.data.exams || []);
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    window.location.href = '/';
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">대시보드를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="max-w-7xl mx-auto px-4 py-24">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">학부모 대시보드</h1>
+            <p className="text-gray-600">안녕하세요, {user?.parent_name || user?.email}님</p>
+          </div>
+          <div className="flex space-x-4">
+            <Button onClick={() => window.location.href = '/exam/reserve'} className="bg-purple-600 hover:bg-purple-700">
+              <Calendar className="w-4 h-4 mr-2" />
+              시험 예약
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              로그아웃
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Student Information Card */}
+          <div className="lg:col-span-2">
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="w-5 h-5 mr-2 text-purple-600" />
+                  학생 정보
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label className="text-gray-600">학생 이름</Label>
+                    <p className="text-lg font-medium">{user?.student_name || '미입력'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-600">학부모 이름</Label>
+                    <p className="text-lg font-medium">{user?.parent_name || user?.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-600">연락처</Label>
+                    <p className="text-lg font-medium">{user?.phone || '미입력'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-600">이메일</Label>
+                    <p className="text-lg font-medium">{user?.email}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Exam History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BookmarkCheck className="w-5 h-5 mr-2 text-purple-600" />
+                  시험 기록
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {examHistory.length > 0 ? (
+                  <div className="space-y-4">
+                    {examHistory.map((exam, index) => (
+                      <div key={index} className="border-l-4 border-purple-400 pl-4 py-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-semibold">{exam.type} 시험</h4>
+                            <p className="text-gray-600 text-sm">{exam.date}</p>
+                          </div>
+                          <Badge className={exam.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                            {exam.status === 'completed' ? '완료' : '예정'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <BookmarkCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">아직 시험 기록이 없습니다.</p>
+                    <Button 
+                      onClick={() => window.location.href = '/exam/reserve'}
+                      className="mt-4 bg-purple-600 hover:bg-purple-700"
+                    >
+                      시험 예약하기
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions Sidebar */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>빠른 메뉴</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Button 
+                    onClick={() => window.location.href = '/exam/reserve?brchType=junior'}
+                    variant="outline" 
+                    className="w-full justify-start"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    초등부 시험 예약
+                  </Button>
+                  <Button 
+                    onClick={() => window.location.href = '/exam/reserve?brchType=middle'}
+                    variant="outline" 
+                    className="w-full justify-start"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    중등부 시험 예약
+                  </Button>
+                  <Button 
+                    onClick={() => window.location.href = '/programs'}
+                    variant="outline" 
+                    className="w-full justify-start"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    프로그램 안내
+                  </Button>
+                  <Button 
+                    onClick={() => window.location.href = '/news'}
+                    variant="outline" 
+                    className="w-full justify-start"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    최신 소식
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
+              <CardContent className="p-6">
+                <h4 className="font-semibold text-purple-900 mb-3">문의사항이 있으시다면?</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center space-x-2 text-purple-700">
+                    <Phone className="w-4 h-4" />
+                    <span>053-754-0577</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-purple-700">
+                    <Mail className="w-4 h-4" />
+                    <span>frage0577@gmail.com</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
 // Admin Member Management Component
 const AdminMemberManagement = () => {
   const [adminToken] = useState(localStorage.getItem('adminToken'));
