@@ -2149,13 +2149,13 @@ const Signup = ({ onSignup }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="parent_name">학부모 성명</Label>
+                  <Label htmlFor="name">학부모 성명</Label>
                   <Input
-                    id="parent_name"
+                    id="name"
                     type="text"
                     placeholder="김학부모"
-                    value={formData.parent_name}
-                    onChange={(e) => setFormData({...formData, parent_name: e.target.value})}
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                     required
                   />
                 </div>
@@ -2170,6 +2170,33 @@ const Signup = ({ onSignup }) => {
                     onChange={(e) => setFormData({...formData, student_name: e.target.value})}
                     required
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="student_birthdate">학생 생년월일</Label>
+                  <Input
+                    id="student_birthdate"
+                    type="date"
+                    value={formData.student_birthdate}
+                    onChange={(e) => setFormData({...formData, student_birthdate: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="branch">캠퍼스</Label>
+                  <Select value={formData.branch} onValueChange={(value) => setFormData({...formData, branch: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="캠퍼스를 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kinder">유치부 (5-7세)</SelectItem>
+                      <SelectItem value="junior">초등부 (8-12세)</SelectItem>
+                      <SelectItem value="middle">중등부 (13-16세)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
