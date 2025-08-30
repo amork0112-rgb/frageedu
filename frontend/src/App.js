@@ -1126,17 +1126,189 @@ const ExamGuide = () => {
   );
 };
 
-// Simple Placeholder Pages
-const Programs = () => (
-  <div className="min-h-screen bg-white pt-20">
-    <Header />
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">Programs</h1>
-      <p className="text-xl text-gray-600">프로그램 상세 페이지 (구현 예정)</p>
+// Programs Page with Exam Reservation
+const Programs = () => {
+  const programsData = [
+    {
+      id: 'kinder',
+      title: 'Kindergarten English',
+      subtitle: '유치부 (5-7세)',
+      description: '놀이 중심의 영어 교육으로 자연스러운 언어 습득을 도와드립니다.',
+      features: ['스토리텔링', '신체 활동', '창의적 표현', '기초 파닉스'],
+      examRequired: false,
+      consultationText: '상담 및 레벨테스트 신청'
+    },
+    {
+      id: 'junior',
+      title: 'Elementary English',
+      subtitle: '초등부 (8-12세)', 
+      description: '체계적인 읽기, 쓰기 교육과 프로젝트 기반 학습을 진행합니다.',
+      features: ['독해력 향상', '창작 활동', '토론 참여', '프로젝트 학습'],
+      examRequired: true,
+      examText: '입학시험 예약'
+    },
+    {
+      id: 'middle', 
+      title: 'Middle School English',
+      subtitle: '중등부 (13-16세)',
+      description: '비판적 사고력과 고급 영어 실력을 기르는 심화 과정입니다.',
+      features: ['비판적 사고', '에세이 작성', '토론 및 발표', '학술 영어'],
+      examRequired: true,
+      examText: '입학시험 예약'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      
+      {/* Hero Section */}
+      <section className="pt-24 pb-16 bg-gradient-to-br from-purple-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+            Frage EDU Programs
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            연령별 맞춤형 영어교육 프로그램으로 비판적 사고력을 키워드립니다
+          </p>
+        </div>
+      </section>
+
+      {/* Programs Grid */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {programsData.map((program) => (
+              <Card key={program.id} className="rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className={`h-48 rounded-t-xl ${
+                  program.id === 'kinder' 
+                    ? 'bg-gradient-to-br from-yellow-100 to-orange-100'
+                    : program.id === 'junior'
+                    ? 'bg-gradient-to-br from-green-100 to-emerald-100'
+                    : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+                }`}>
+                  <div className="h-full flex items-center justify-center">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
+                      program.id === 'kinder'
+                        ? 'bg-orange-200'
+                        : program.id === 'junior' 
+                        ? 'bg-green-200'
+                        : 'bg-blue-200'
+                    }`}>
+                      <BookOpen className={`w-10 h-10 ${
+                        program.id === 'kinder'
+                          ? 'text-orange-600'
+                          : program.id === 'junior'
+                          ? 'text-green-600' 
+                          : 'text-blue-600'
+                      }`} />
+                    </div>
+                  </div>
+                </div>
+                
+                <CardContent className="p-8">
+                  <div className="mb-4">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{program.title}</h3>
+                    <p className="text-purple-600 font-medium">{program.subtitle}</p>
+                  </div>
+                  
+                  <p className="text-gray-600 mb-6">{program.description}</p>
+                  
+                  <div className="mb-6">
+                    <h4 className="font-semibold text-gray-900 mb-3">주요 특징</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {program.features.map((feature, index) => (
+                        <div key={index} className="flex items-center space-x-2">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <span className="text-sm text-gray-600">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {program.examRequired ? (
+                      <>
+                        <Button 
+                          onClick={() => window.location.href = `/exam/reserve?brchType=${program.id}`}
+                          className="w-full bg-purple-600 hover:bg-purple-700"
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          {program.examText}
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => window.location.href = `/exam/guide?brchType=${program.id}`}
+                          className="w-full"
+                        >
+                          시험 안내보기
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        onClick={() => window.location.href = '/consultation'}
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        {program.consultationText}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Additional Info Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">입학 절차 안내</h2>
+            <p className="text-xl text-gray-600">간단한 절차로 Frage EDU에 합류하세요</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">1. 프로그램 선택</h3>
+              <p className="text-gray-600 text-sm">연령에 맞는 적합한 프로그램을 선택하세요</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">2. 시험 예약</h3>
+              <p className="text-gray-600 text-sm">온라인으로 편리하게 입학시험을 예약하세요</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookmarkCheck className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">3. 시험 응시</h3>
+              <p className="text-gray-600 text-sm">예약된 일시에 캠퍼스에서 레벨테스트를 받으세요</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Award className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">4. 수업 시작</h3>
+              <p className="text-gray-600 text-sm">결과 확인 후 적합한 클래스에서 학습을 시작하세요</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
     </div>
-    <Footer />
-  </div>
-);
+  );
+};
 
 const Community = () => (
   <div className="min-h-screen bg-white pt-20">
