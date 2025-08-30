@@ -1425,17 +1425,32 @@ class FrageEDUAPITester:
         return False
 
 def main():
-    print("🚀 Starting Frage EDU Admin Account Creation API Tests")
+    print("🚀 Starting Frage EDU Parent Enrollment Form System API Tests")
     print("=" * 60)
     
     tester = FrageEDUAPITester()
     
-    # Test sequence - PRIORITY: Admin Account Creation Functionality
+    # Test sequence - PRIORITY: Parent Enrollment Form System
     tests = [
         # Basic API Tests
         ("Root Endpoint", tester.test_root_endpoint),
         
-        # PRIORITY TESTING - Admin Account Creation with Roles
+        # PRIORITY TESTING - Parent Enrollment Form System
+        ("Setup Parent Enrollment Test Data", tester.setup_parent_enrollment_test_data),
+        ("GET Parent Enroll Form Data", tester.test_parent_enroll_form_get),
+        ("GET Parent Enroll Form - Unauthorized", tester.test_parent_enroll_form_get_unauthorized),
+        ("GET Parent Enroll Form - Invalid Student", tester.test_parent_enroll_form_get_invalid_student),
+        ("POST Parent Enroll Form - Valid Data", tester.test_parent_enroll_form_post_valid),
+        ("POST Parent Enroll Form - Missing Required Fields", tester.test_parent_enroll_form_post_missing_required),
+        ("POST Parent Enroll Form - Shuttle Validation", tester.test_parent_enroll_form_post_shuttle_validation),
+        ("POST Student Photo Upload - Endpoint Test", tester.test_parent_student_photo_upload_valid),
+        ("POST Student Photo Upload - Unauthorized", tester.test_parent_student_photo_upload_unauthorized),
+        ("POST Student Photo Upload - Invalid Student", tester.test_parent_student_photo_upload_invalid_student),
+        ("GET Parent Address Search", tester.test_parent_address_search),
+        ("GET Parent Address Search - Unauthorized", tester.test_parent_address_search_unauthorized),
+        ("GET Parent Address Search - Empty Query", tester.test_parent_address_search_empty_query),
+        
+        # Supporting Tests - Admin Account Creation with Roles (Previous Tests)
         ("Login with Existing Admin (admin/AdminPass123!)", tester.test_existing_admin_login),
         ("Setup Default Admin Accounts", tester.test_setup_default_admins),
         ("Test New Admin Login Credentials", tester.test_new_admin_logins),
