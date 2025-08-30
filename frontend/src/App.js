@@ -3933,10 +3933,6 @@ const AdminDashboard = () => {
               <GraduationCap className="w-4 h-4 mr-2" />
               학생 관리
             </Button>
-            <Button onClick={() => window.location.href = '/admin/members'} variant="outline">
-              <Users className="w-4 h-4 mr-2" />
-              회원 관리
-            </Button>
             <Button onClick={() => window.location.href = '/admin/exams'} variant="outline">
               <Calendar className="w-4 h-4 mr-2" />
               시험 관리
