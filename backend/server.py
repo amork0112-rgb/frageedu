@@ -96,6 +96,9 @@ class ConsentUpdate(BaseModel):
     privacy_agreed: bool
     photo_consent: bool
     medical_consent: bool
+    parent_signature: Optional[str] = None
+    student_name: Optional[str] = None
+    signed_at: Optional[datetime] = None
 
 class FormsUpdate(BaseModel):
     student_name: str
