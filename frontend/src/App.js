@@ -1409,9 +1409,24 @@ const News = () => {
                     <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">
                       {article.title}
                     </h3>
-                    <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-                      {article.content}
-                    </p>
+                    <div className="text-gray-600 text-lg mb-6 leading-relaxed">
+                      {article.content.length > 200 ? (
+                        <p>{article.content.substring(0, 200)}...</p>
+                      ) : (
+                        <div 
+                          className="prose prose-lg max-w-none"
+                          dangerouslySetInnerHTML={{ 
+                            __html: article.content
+                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                              .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+                              .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                              .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 10px 0;" />')
+                              .replace(/\n/g, '<br />')
+                          }}
+                        />
+                      )}
+                    </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 text-sm">
                         {new Date(article.created_at || article.date).toLocaleDateString('ko-KR')}
