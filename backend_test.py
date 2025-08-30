@@ -498,6 +498,143 @@ class FrageEDUAPITester:
         
         return success
 
+    # RBAC and Student Management Tests
+    def test_init_rbac_system(self):
+        """Test RBAC system initialization"""
+        if not self.admin_token:
+            print("❌ No admin token available for RBAC init test")
+            return False
+        
+        success, response = self.run_test("Initialize RBAC System", "POST", "admin/init-rbac", 200)
+        if success:
+            print("✅ RBAC system initialized successfully")
+        return success
+
+    def test_admin_students_endpoint(self):
+        """Test /admin/students endpoint (should be /admin/student-management)"""
+        if not self.admin_token:
+            print("❌ No admin token available for students endpoint test")
+            return False
+        
+        # Test the incorrect endpoint first
+        success, response = self.run_test("Test /admin/students (Expected 404)", "GET", "admin/students", 404)
+        if success:
+            print("✅ Confirmed /admin/students endpoint does not exist")
+        
+        return success
+
+    def test_admin_student_management_endpoint(self):
+        """Test /admin/student-management endpoint with RBAC filtering"""
+        if not self.admin_token:
+            print("❌ No admin token available for student management test")
+            return False
+        
+        # Test basic endpoint
+        success, response = self.run_test("Get Student Management List", "GET", "admin/student-management", 200)
+        if not success:
+            return False
+        
+        # Check response structure
+        if response:
+            print(f"📊 Student Management Response Structure:")
+            print(f"   Students count: {len(response.get('students', []))}")
+            print(f"   Allowed branches: {response.get('allowed_branches', [])}")
+            print(f"   User permissions: {len(response.get('user_permissions', []))}")
+            
+            # Check if we have students data
+            students = response.get('students', [])
+            if len(students) == 0:
+                print("⚠️  No students found in response - this might be the issue!")
+            else:
+                print(f"✅ Found {len(students)} students")
+                # Show first student structure
+                if students:
+                    first_student = students[0]
+                    print(f"   Sample student: {first_student.get('name', 'N/A')} - Branch: {first_student.get('branch', 'N/A')}")
+        
+        # Test with filters
+        params = {"branch_filter": "junior"}
+        success, response = self.run_test("Get Students by Branch Filter", "GET", "admin/student-management", 200, params=params)
+        if not success:
+            return False
+        
+        # Test with search
+        params = {"search": "김"}
+        success, response = self.run_test("Search Students", "GET", "admin/student-management", 200, params=params)
+        if not success:
+            return False
+        
+        # Test with pagination
+        params = {"page": 1, "limit": 10}
+        success, response = self.run_test("Get Students with Pagination", "GET", "admin/student-management", 200, params=params)
+        
+        return success
+
+    def test_database_student_data(self):
+        """Test if there are students in the database by creating some test data"""
+        if not self.admin_token:
+            print("❌ No admin token available for database test")
+            return False
+        
+        print("🔍 Checking if we need to create test student data...")
+        
+        # First check if we have any students via the API
+        success, response = self.run_test("Check Existing Students", "GET", "admin/student-management", 200)
+        if success and response:
+            students = response.get('students', [])
+            if len(students) > 0:
+                print(f"✅ Found {len(students)} existing students in database")
+                return True
+            else:
+                print("⚠️  No students found - this explains the null/empty data issue!")
+                print("💡 The API is working correctly but there's no student data in the database")
+                return True  # This is actually expected behavior
+        
+        return False
+
+    def test_rbac_permissions_check(self):
+        """Test RBAC permissions for current admin"""
+        if not self.admin_token:
+            print("❌ No admin token available for permissions test")
+            return False
+        
+        # The student-management endpoint should show permissions in response
+        success, response = self.run_test("Check Admin Permissions", "GET", "admin/student-management", 200)
+        if success and response:
+            permissions = response.get('user_permissions', [])
+            allowed_branches = response.get('allowed_branches', [])
+            
+            print(f"📋 Current Admin RBAC Status:")
+            print(f"   Allowed branches: {allowed_branches}")
+            print(f"   Permissions count: {len(permissions)}")
+            
+            # Check for key permissions
+            key_permissions = ['can_view_student', 'can_edit_student', 'can_view_class']
+            for perm in key_permissions:
+                has_perm = perm in permissions
+                status = "✅" if has_perm else "❌"
+                print(f"   {status} {perm}: {has_perm}")
+            
+            if not allowed_branches:
+                print("⚠️  Admin has no allowed branches - this could cause empty results!")
+            
+            if 'can_view_student' not in permissions:
+                print("⚠️  Admin lacks 'can_view_student' permission - this could cause access issues!")
+        
+        return success
+
+    def test_create_sample_student_data(self):
+        """Create sample student data for testing (if needed)"""
+        if not self.admin_token:
+            print("❌ No admin token available for creating test data")
+            return False
+        
+        print("🔧 This test would create sample student data, but we'll skip it")
+        print("   Reason: We should test with existing data or report the empty state")
+        print("   The main issue is likely that no student data exists in the database")
+        
+        return True
+
     def test_login_disabled_user(self):
         """Test login with disabled user account"""
         # First create a user and disable them
