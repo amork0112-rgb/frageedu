@@ -1124,7 +1124,7 @@ def main():
     
     # Print results
     print("\n" + "=" * 60)
-    print("📊 MEMBER MANAGEMENT SYSTEM TEST RESULTS")
+    print("📊 ADMIN ACCOUNT CREATION SYSTEM TEST RESULTS")
     print("=" * 60)
     print(f"Tests passed: {tester.tests_passed}/{tester.tests_run}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
@@ -1143,18 +1143,17 @@ def main():
     print(f"   Test User ID: {tester.test_user_id or 'None'}")
     
     # Summary of key functionality tested
-    print(f"\n📋 Key Features Tested:")
-    print(f"   ✓ Separated User/Parent/Student models")
-    print(f"   ✓ Admin authentication and authorization")
-    print(f"   ✓ Member search, filtering, pagination, sorting")
-    print(f"   ✓ Member profile details")
-    print(f"   ✓ Password reset with audit logging")
-    print(f"   ✓ User status management (enable/disable)")
-    print(f"   ✓ Bulk CSV export")
-    print(f"   ✓ Bulk notifications")
-    print(f"   ✓ Audit log viewing and filtering")
-    print(f"   ✓ Login security (disabled user rejection)")
-    print(f"   ✓ Last login tracking")
+    print(f"\n📋 Key Admin Account Creation Features Tested:")
+    print(f"   ✓ Existing admin login (admin/AdminPass123!)")
+    print(f"   ✓ Setup default admin accounts (super_admin, kinder_admin, junior_admin, middle_admin)")
+    print(f"   ✓ New admin login credentials verification")
+    print(f"   ✓ Role-based access control (RBAC) filtering")
+    print(f"   ✓ Custom admin creation with specific roles")
+    print(f"   ✓ Admin permissions verification")
+    print(f"   ✓ Branch-based student data filtering")
+    print(f"   ✓ RBAC system initialization")
+    print(f"   ✓ Student management endpoints")
+    print(f"   ✓ Audit logging for admin actions")
     
     return 0 if len(failed_tests) == 0 else 1
 
