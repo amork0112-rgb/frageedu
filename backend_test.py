@@ -518,14 +518,18 @@ class FrageEDUAPITester:
 
     # RBAC and Student Management Tests
     def test_init_rbac_system(self):
-        """Test RBAC system initialization"""
+        """Test RBAC system initialization - should work with regular admin roles now"""
         if not self.admin_token:
             print("❌ No admin token available for RBAC init test")
             return False
         
-        success, response = self.run_test("Initialize RBAC System", "POST", "admin/init-rbac", 200)
+        success, response = self.run_test("Initialize RBAC System (Fixed for regular admin)", "POST", "admin/init-rbac", 200)
         if success:
-            print("✅ RBAC system initialized successfully")
+            print("✅ RBAC system initialized successfully with regular admin role")
+            if response:
+                print(f"   Response: {response.get('message', 'No message')}")
+        else:
+            print("❌ RBAC initialization failed - may still require super_admin")
         return success
 
     def test_admin_students_endpoint(self):
