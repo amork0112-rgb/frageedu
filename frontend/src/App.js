@@ -47,7 +47,18 @@ import {
   Trash2,
   Save,
   Settings,
-  BarChart3
+  BarChart3,
+  Upload,
+  Image as ImageIcon,
+  Bold,
+  Italic,
+  List,
+  Link,
+  Type,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Quote
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
