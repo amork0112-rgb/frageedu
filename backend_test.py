@@ -2,6 +2,7 @@ import requests
 import sys
 import json
 from datetime import datetime
+import time
 
 class FrageEDUAPITester:
     def __init__(self, base_url="https://frageedu-admin.preview.emergentagent.com"):
@@ -9,6 +10,8 @@ class FrageEDUAPITester:
         self.api_url = f"{base_url}/api"
         self.token = None
         self.household_token = None
+        self.admin_token = None
+        self.test_user_id = None
         self.tests_run = 0
         self.tests_passed = 0
 
