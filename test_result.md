@@ -101,3 +101,167 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Implement comprehensive Member/Parent Management system for admin portal with separate User, Parent, Student models, audit logging, search/filtering, bulk operations, and proper RBAC. The system should provide a complete interface for managing member accounts with pagination, sorting, and detailed profile views."
+
+backend:
+  - task: "Update data models to separate User, Parent, Student with new fields"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added separate User, Parent, Student, AuditLog models with proper fields including role, status, branch, last_login_at, etc. Updated UserCreate, UserResponse and added new response models."
+
+  - task: "Add audit logging functionality"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added log_audit utility function and AuditLog model for tracking admin actions (RESET_PW, DISABLE, ENABLE, EXPORT, NOTIFY)."
+
+  - task: "Update signup process for new model structure"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Modified signup endpoint to create separate User, Parent, and Student records. Updated to handle branch field and new structure."
+
+  - task: "Update login to track last_login_at and check status"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated login endpoint to update last_login_at timestamp and check if user status is active (reject disabled users)."
+
+  - task: "Implement GET /admin/members with search, filter, pagination, sort"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added comprehensive members list endpoint with search across parent/student names, email, phone. Supports branch filtering, status filtering, pagination, and sorting by joinedAt, lastLogin, name."
+
+  - task: "Implement GET /admin/members/:id for detailed member profile"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added member detail endpoint showing user profile, parent info, students list, admission data, exam reservations with status badges."
+
+  - task: "Implement POST /admin/members/:id/reset-password with audit logging"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added password reset endpoint that generates secure temporary password and logs RESET_PW action in audit trail."
+
+  - task: "Implement PATCH /admin/members/:id/status for enable/disable with audit"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added status update endpoint to enable/disable users with proper audit logging (ENABLE/DISABLE actions)."
+
+  - task: "Implement POST /admin/members/bulk/export for CSV export"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added bulk CSV export functionality with member details including parent name, email, phone, branch, students, status, join date, last login."
+
+  - task: "Implement POST /admin/members/bulk/notify for AlimTalk notifications"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added bulk notification endpoint structure with audit logging. AlimTalk integration placeholder ready for credentials."
+
+  - task: "Implement GET /admin/audit for audit log viewing"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added audit logs endpoint with filtering by targetId and action type, pagination, and actor name enrichment."
+
+frontend:
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Update data models to separate User, Parent, Student with new fields"
+    - "Add audit logging functionality"
+    - "Update signup process for new model structure"
+    - "Update login to track last_login_at and check status"
+    - "Implement GET /admin/members with search, filter, pagination, sort"
+    - "Implement GET /admin/members/:id for detailed member profile"
+    - "Implement POST /admin/members/:id/reset-password with audit logging"
+    - "Implement PATCH /admin/members/:id/status for enable/disable with audit"
+    - "Implement POST /admin/members/bulk/export for CSV export"
+    - "Implement POST /admin/members/bulk/notify for AlimTalk notifications"
+    - "Implement GET /admin/audit for audit log viewing"
+  stuck_tasks: []
+  test_all: true
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Completed Phase 1 of Member/Parent Management system: Updated all data models to separate User/Parent/Student structure, added comprehensive audit logging, implemented all 10 specified API endpoints with proper authentication, search, filtering, pagination, sorting, and bulk operations. Ready for backend testing of all new endpoints and existing functionality to ensure no regressions."
