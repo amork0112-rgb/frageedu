@@ -2822,9 +2822,9 @@ async def get_students_for_admin(
                 teacher_name=class_assignment["teacher_name"] if class_assignment else None,
                 attendance_rate=95.0,  # Placeholder
                 payment_status="paid",  # Placeholder
-                last_exam_score=85,  # Placeholder
+                last_attendance=None,  # Placeholder
                 enrollment_progress=progress_percentage,
-                notes=student.get("notes")
+                created_at=datetime.fromisoformat(student.get("created_at", datetime.now(timezone.utc).isoformat())) if isinstance(student.get("created_at"), str) else student.get("created_at", datetime.now(timezone.utc))
             )
             formatted_students.append(formatted_student)
         
