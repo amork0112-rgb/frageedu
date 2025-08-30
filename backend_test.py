@@ -77,21 +77,26 @@ class FrageEDUAPITester:
         return self.run_test("Root API", "GET", "", 200)
 
     def test_signup(self):
-        """Test user signup"""
+        """Test user signup with new model structure"""
         timestamp = datetime.now().strftime('%H%M%S')
         signup_data = {
-            "email": f"test{timestamp}@frage.edu",
+            "email": f"parent{timestamp}@frage.edu",
             "phone": "010-1234-5678",
+            "name": f"김학부모{timestamp}",
+            "student_name": f"김학생{timestamp}",
             "password": "TestPassword123!",
-            "terms_accepted": True
+            "terms_accepted": True,
+            "branch": "junior"
         }
         
-        success, response = self.run_test("User Signup", "POST", "signup", 200, signup_data)
+        success, response = self.run_test("User Signup (New Model)", "POST", "signup", 200, signup_data)
         if success and 'token' in response:
             self.token = response['token']
             self.household_token = response['household_token']
+            self.test_user_id = response['user']['id']
             print(f"   Saved token: {self.token[:20]}...")
             print(f"   Saved household_token: {self.household_token}")
+            print(f"   Saved user_id: {self.test_user_id}")
             return True
         return False
 
