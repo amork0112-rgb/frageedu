@@ -77,7 +77,22 @@ import {
   Heart,
   Bell,
   Archive,
-  CreditCard
+  CreditCard,
+  UserPlus,
+  FileSpreadsheet,
+  GraduationCap,
+  School,
+  Building,
+  MapPin as Location,
+  Calendar as CalendarCheck,
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  Pause,
+  AlertTriangle,
+  MoreHorizontal,
+  PanelRightOpen,
+  X as CloseIcon
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
