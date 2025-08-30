@@ -5651,6 +5651,7 @@ function App() {
           
           {/* Parent Dashboard */}
           <Route path="/parent/dashboard" element={<ParentDashboard />} />
+          <Route path="/parent/dashboard/comprehensive" element={<ComprehensiveDashboard />} />
           
           {/* Admission Portal Pages - keeping existing functionality */}
           <Route path="/dashboard" element={
