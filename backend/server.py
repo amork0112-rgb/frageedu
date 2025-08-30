@@ -3248,7 +3248,7 @@ async def assign_student_to_class(
             raise HTTPException(status_code=403, detail="Access denied: cannot manage this student's branch")
         
         # Check if assignment already exists
-        existing = await db.class_assignments.find_one({
+        existing = await db.class_placements.find_one({
             "student_id": student_id,
             "status": "active"
         })
@@ -3276,7 +3276,7 @@ async def assign_student_to_class(
         assignment_dict['created_at'] = assignment_dict['created_at'].isoformat()
         assignment_dict['effective_from'] = assignment_dict['effective_from'].isoformat()
         
-        await db.class_assignments.insert_one(assignment_dict)
+        await db.class_placements.insert_one(assignment_dict)
         
         # Update student status to enrolled
         prev_status = student.get("status")
