@@ -2440,7 +2440,7 @@ const RichTextEditor = ({ content, onChange }) => {
 
       {/* Help Text */}
       <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-        <strong>마크다운 사용법:</strong> **굵게**, *기울임*, # 제목, - 목록, > 인용, 이미지는 드래그하거나 업로드 버튼 사용
+        <strong>마크다운 사용법:</strong> **굵게**, *기울임*, # 제목, - 목록, &gt; 인용, 이미지는 드래그하거나 업로드 버튼 사용
       </div>
     </div>
   );
