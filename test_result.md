@@ -139,19 +139,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Update data models to separate User, Parent, Student with new fields"
-    - "Add audit logging functionality"
-    - "Update signup process for new model structure"
-    - "Update login to track last_login_at and check status"
-    - "Implement GET /admin/members with search, filter, pagination, sort"
-    - "Implement GET /admin/members/:id for detailed member profile"
-    - "Implement POST /admin/members/:id/reset-password with audit logging"
-    - "Implement PATCH /admin/members/:id/status for enable/disable with audit"
-    - "Implement POST /admin/members/bulk/export for CSV export"
-    - "Implement POST /admin/members/bulk/notify for AlimTalk notifications"
-    - "Implement GET /admin/audit for audit log viewing"
-  stuck_tasks: []
-  test_all: true
+    - "Debug /admin/students API returning null/empty data"
+    - "Verify RBAC initialization and student data"
+  stuck_tasks:
+    - "Debug /admin/students API returning null/empty data"
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
