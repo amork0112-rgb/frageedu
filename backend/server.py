@@ -296,6 +296,47 @@ class BulkNotifyRequest(BaseModel):
     user_ids: List[str]
     message: str
 
+# Parent Dashboard Models
+class TestScheduleResponse(BaseModel):
+    id: str
+    student_name: str
+    branch_type: str  # junior, middle, kinder
+    scheduled_date: Optional[datetime]
+    scheduled_time: Optional[str]
+    location: str
+    status: str  # scheduled, completed, cancelled
+    notes: Optional[str]
+
+class TestResultResponse(BaseModel):
+    id: str
+    student_name: str
+    test_date: datetime
+    score: Optional[int]
+    level: Optional[str]
+    status: str  # passed, failed, pending
+    feedback: Optional[str]
+    recommended_class: Optional[str]
+
+class ClassAssignmentResponse(BaseModel):
+    id: str
+    student_name: str
+    class_name: str
+    teacher_name: str
+    schedule: str  # e.g., "Monday/Wednesday 4:00-5:30 PM"
+    classroom: str
+    start_date: datetime
+    end_date: Optional[datetime]
+    status: str  # active, completed, suspended
+    materials: List[str]
+
+class ParentDashboardResponse(BaseModel):
+    parent_info: Dict[str, Any]
+    students: List[Dict[str, Any]]
+    test_schedules: List[TestScheduleResponse]
+    test_results: List[TestResultResponse]
+    class_assignments: List[ClassAssignmentResponse]
+    enrollment_status: str  # new, test_scheduled, test_taken, enrolled, active
+
 # Utility functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
