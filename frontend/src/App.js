@@ -1944,8 +1944,16 @@ const AdminDashboard = () => {
             <p className="text-gray-600">Frage EDU 콘텐츠 관리</p>
           </div>
           <div className="flex space-x-4">
+            <Button onClick={() => window.location.href = '/admin/users'} variant="outline">
+              <Users className="w-4 h-4 mr-2" />
+              회원 관리
+            </Button>
+            <Button onClick={() => window.location.href = '/admin/exams'} variant="outline">
+              <Calendar className="w-4 h-4 mr-2" />
+              시험 관리
+            </Button>
             <Button onClick={() => window.location.href = '/admin/news'} className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="w-4 h-4 mr-2" />
+              <FileText className="w-4 h-4 mr-2" />
               뉴스 관리
             </Button>
             <Button variant="outline" onClick={handleLogout}>
