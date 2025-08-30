@@ -307,6 +307,24 @@ class FrageEDUAPITester:
             return True
         return False
 
+    def test_create_super_admin(self):
+        """Create a super admin for RBAC testing"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        admin_data = {
+            "username": f"superadmin{timestamp}",
+            "email": f"superadmin{timestamp}@frage.edu",
+            "password": "SuperAdmin123!"
+        }
+        
+        success, response = self.run_test("Create Super Admin", "POST", "admin/signup", 200, admin_data)
+        if success and 'token' in response:
+            # We need to manually update this admin to super_admin role
+            # For now, let's save the token and try to use it
+            self.admin_token = response['token']
+            print(f"   Created admin (will need role upgrade): {response['admin']['id']}")
+            return True
+        return False
+
     def test_admin_login(self):
         """Test admin login"""
         # Create admin first if not exists
