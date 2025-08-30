@@ -171,6 +171,7 @@ const Footer = () => {
               <li><a href="/admissions" className="hover:text-white transition-colors">Admissions</a></li>
               <li><a href="/community" className="hover:text-white transition-colors">Community</a></li>
               <li><a href="/market" className="hover:text-white transition-colors">Market</a></li>
+              <li><a href="/admin/login" className="hover:text-white transition-colors text-sm opacity-70">Admin</a></li>
             </ul>
           </div>
           
