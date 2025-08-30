@@ -445,7 +445,7 @@ class FrageEDUAPITester:
             print("❌ No admin token or test user ID available for bulk notify test")
             return False
         
-        # The endpoint expects user_ids and message as separate parameters
+        # The endpoint expects BulkNotifyRequest with user_ids and message
         notify_data = {
             "user_ids": [self.test_user_id],
             "message": "테스트 알림 메시지입니다."
