@@ -1959,20 +1959,7 @@ async def get_parent_dashboard(current_user: UserResponse = Depends(get_current_
         if admission_data and admission_data.get("consent_status") == "completed" and admission_data.get("forms_status") == "completed":
             enrollment_status = "enrolled"
         
-        # Prepare test schedules
-        test_schedules = []
-        for reservation in exam_reservations:
-            test_schedule = TestScheduleResponse(
-                id=reservation.get("id", ""),
-                student_name=students[0].get("name", "") if students else "",
-                branch_type=reservation.get("brchType", ""),
-                scheduled_date=reservation.get("slot_start"),
-                scheduled_time=f"{reservation.get('slot_start', '')} - {reservation.get('slot_end', '')}",
-                location=reservation.get("campus", "Frage EDU Campus"),
-                status=reservation.get("status", "requested"),
-                notes=reservation.get("notes", "")
-            )
-            test_schedules.append(test_schedule)
+        # Note: Test schedules are now handled through the new dashboard cards system
         
         # Mock test results (in production, fetch from test_results table)
         test_results = []
