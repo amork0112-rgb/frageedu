@@ -182,11 +182,11 @@ backend:
 
   - task: "Implement GET /admin/members/:id for detailed member profile"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
@@ -194,6 +194,9 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "Fixed ObjectId serialization by removing _id fields from all MongoDB documents before JSON response. Added proper data cleaning for user, parent, students, admission_data, exam_reservations."
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - ObjectId serialization issue completely resolved. GET /admin/members/:id endpoint now returns proper JSON response with all required fields (user, parent, students, admission_data, exam_reservations). No more 500 errors. Response structure verified and working correctly."
 
   - task: "Implement POST /admin/members/:id/reset-password with audit logging"
     implemented: true
