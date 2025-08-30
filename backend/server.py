@@ -2603,8 +2603,9 @@ async def acknowledge_notices(
 async def init_rbac_system(current_admin: AdminResponse = Depends(get_current_admin)):
     """Initialize RBAC system with default permissions and roles"""
     try:
-        if current_admin.role != "admin":  # Temporary check, will be super_admin later
-            raise HTTPException(status_code=403, detail="Only super admin can initialize RBAC system")
+        # Allow admin or super_admin to initialize RBAC
+        if current_admin.role not in ["admin", "super_admin"]:
+            raise HTTPException(status_code=403, detail="Only admin or super admin can initialize RBAC system")
         
         result = await initialize_rbac_system()
         return {"message": result}
