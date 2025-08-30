@@ -890,6 +890,429 @@ async def send_alimtalk_notification(student_id: str, template_type: str, data: 
 async def root():
     return {"message": "Frage EDU API", "version": "1.0"}
 
+# Enrollment Flow Management Routes
+@api_router.post("/admin/init-flows")
+async def init_enrollment_flows(current_admin: AdminResponse = Depends(get_current_admin)):
+    """Initialize default enrollment flows"""
+    try:
+        result = await initialize_default_flows()
+        return {"message": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error initializing flows: {str(e)}")
+
+@api_router.get("/admin/flows")
+async def get_enrollment_flows(current_admin: AdminResponse = Depends(get_current_admin)):
+    """Get all enrollment flows"""
+    try:
+        flows = await db.enrollment_flows.find({"is_active": True}).to_list(100)
+        
+        # Clean flows
+        for flow in flows:
+            if '_id' in flow:
+                del flow['_id']
+        
+        return {"flows": [EnrollmentFlowResponse(**flow) for flow in flows]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching flows: {str(e)}")
+
+@api_router.get("/flows/{flow_key}")
+async def get_flow_by_key(flow_key: str):
+    """Get specific enrollment flow"""
+    try:
+        flow = await db.enrollment_flows.find_one({"flow_key": flow_key, "is_active": True})
+        if not flow:
+            raise HTTPException(status_code=404, detail="Flow not found")
+        
+        if '_id' in flow:
+            del flow['_id']
+        
+        return EnrollmentFlowResponse(**flow)
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching flow: {str(e)}")
+
+@api_router.post("/admin/students/{student_id}/progress/init")
+async def init_student_progress(
+    student_id: str, 
+    flow_key: str,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Initialize progress tracking for a student"""
+    try:
+        # Check if student exists
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Get parent info for household_token
+        parent = await db.parents.find_one({"id": student["parent_id"]})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent not found")
+        
+        # Check if flow exists
+        flow = await db.enrollment_flows.find_one({"flow_key": flow_key, "is_active": True})
+        if not flow:
+            raise HTTPException(status_code=404, detail="Flow not found")
+        
+        # Check if progress already exists
+        existing_progress = await db.student_enrollment_progress.find_one({"student_id": student_id})
+        if existing_progress:
+            raise HTTPException(status_code=400, detail="Progress already initialized")
+        
+        # Get first step
+        first_step = min(flow["steps"], key=lambda x: x["order"])
+        
+        # Create progress record
+        progress = StudentEnrollmentProgress(
+            student_id=student_id,
+            household_token=parent["household_token"],
+            flow_key=flow_key,
+            current_step=first_step["key"]
+        )
+        
+        progress_dict = progress.dict()
+        progress_dict['created_at'] = progress_dict['created_at'].isoformat()
+        progress_dict['updated_at'] = progress_dict['updated_at'].isoformat()
+        
+        await db.student_enrollment_progress.insert_one(progress_dict)
+        
+        return {"message": "Progress initialized successfully", "progress_id": progress.id}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error initializing progress: {str(e)}")
+
+@api_router.get("/parent/dashboard/enhanced")
+async def get_enhanced_dashboard(
+    studentId: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get enhanced parent dashboard with flow progress"""
+    try:
+        # Get parent info
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        # Get students
+        students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+        
+        if not students:
+            raise HTTPException(status_code=404, detail="No students found")
+        
+        # If specific student requested, filter
+        if studentId:
+            students = [s for s in students if s["id"] == studentId]
+            if not students:
+                raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Get progress for each student
+        dashboard_data = []
+        
+        for student in students:
+            # Get progress
+            progress_response = await get_student_progress(student["id"])
+            
+            # Get current tasks (incomplete steps)
+            current_tasks = []
+            completed_tasks = []
+            
+            if progress_response:
+                flow = await db.enrollment_flows.find_one({"flow_key": progress_response.flow_key})
+                if flow:
+                    for step in flow["steps"]:
+                        task_info = {
+                            "key": step["key"],
+                            "name": step["name"],
+                            "description": step.get("description", ""),
+                            "order": step["order"],
+                            "required": step.get("required", True)
+                        }
+                        
+                        if step["key"] in progress_response.completed_steps:
+                            completed_tasks.append(task_info)
+                        elif step["key"] == progress_response.current_step:
+                            task_info["is_current"] = True
+                            current_tasks.append(task_info)
+                        else:
+                            current_tasks.append(task_info)
+            
+            # Get pending payments
+            pending_payments = await db.payment_records.find({
+                "student_id": student["id"],
+                "payment_status": "pending"
+            }).to_list(10)
+            
+            # Get class assignments
+            class_assignments = await db.class_placements.find({
+                "student_id": student["id"],
+                "status": "active"
+            }).to_list(10)
+            
+            # Clean data
+            for payment in pending_payments:
+                if '_id' in payment:
+                    del payment['_id']
+            
+            for assignment in class_assignments:
+                if '_id' in assignment:
+                    del assignment['_id']
+            
+            student_dashboard = DashboardSummaryResponse(
+                student_info={
+                    "id": student["id"],
+                    "name": student["name"],
+                    "grade": student.get("grade", ""),
+                    "birthdate": student.get("birthdate", "")
+                },
+                progress=progress_response if progress_response else ProgressResponse(
+                    student_id=student["id"],
+                    student_name=student["name"],
+                    flow_key="",
+                    current_step="",
+                    completed_steps=[],
+                    total_steps=0,
+                    progress_percentage=0,
+                    status="not_started",
+                    enrollment_status="new"
+                ),
+                current_tasks=current_tasks,
+                completed_tasks=completed_tasks,
+                pending_payments=pending_payments,
+                class_assignments=class_assignments,
+                announcements=[]  # TODO: Add announcements
+            )
+            
+            dashboard_data.append(student_dashboard)
+        
+        # If single student requested, return single object
+        if studentId and len(dashboard_data) == 1:
+            return dashboard_data[0]
+        
+        return {
+            "parent_info": {
+                "name": current_user.name,
+                "email": current_user.email,
+                "phone": current_user.phone,
+                "branch": parent.get("branch", ""),
+                "household_token": current_user.household_token
+            },
+            "students": dashboard_data
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching dashboard: {str(e)}")
+
+@api_router.post("/parent/flow-event")
+async def trigger_parent_flow_event(
+    event_request: FlowEventRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Trigger a flow event from parent dashboard"""
+    try:
+        # Get parent and students
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+        if not students:
+            raise HTTPException(status_code=404, detail="No students found")
+        
+        # For now, apply to first student (can be extended for multi-student)
+        student = students[0]
+        
+        result = await trigger_flow_event(
+            student["id"], 
+            event_request.event_type, 
+            event_request.step_key, 
+            event_request.event_data,
+            f"parent:{current_user.id}"
+        )
+        
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        
+        return {"message": "Event triggered successfully", "event_id": result["event_id"]}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error triggering event: {str(e)}")
+
+@api_router.post("/admin/students/{student_id}/trigger-event")
+async def admin_trigger_flow_event(
+    student_id: str,
+    event_request: FlowEventRequest,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Trigger a flow event from admin dashboard"""
+    try:
+        result = await trigger_flow_event(
+            student_id, 
+            event_request.event_type, 
+            event_request.step_key, 
+            event_request.event_data,
+            f"admin:{current_admin.id}"
+        )
+        
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        
+        # Log admin action
+        await log_audit(
+            current_admin.id,
+            f"TRIGGER_EVENT:{event_request.event_type}",
+            "Student",
+            student_id,
+            event_request.event_data
+        )
+        
+        return {"message": "Event triggered successfully", "event_id": result["event_id"]}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error triggering event: {str(e)}")
+
+@api_router.get("/admin/students/{student_id}/progress")
+async def get_student_progress_admin(
+    student_id: str,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Get student progress (admin view)"""
+    try:
+        progress_response = await get_student_progress(student_id)
+        if not progress_response:
+            raise HTTPException(status_code=404, detail="Progress not found")
+        
+        # Get flow events history
+        events = await db.flow_events.find({"student_id": student_id}).sort("created_at", -1).limit(50).to_list(50)
+        
+        # Clean events
+        for event in events:
+            if '_id' in event:
+                del event['_id']
+        
+        return {
+            "progress": progress_response,
+            "events": events
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching progress: {str(e)}")
+
+@api_router.get("/admin/progress-report")
+async def get_progress_report(
+    current_admin: AdminResponse = Depends(get_current_admin),
+    branch: Optional[str] = None,
+    flow_key: Optional[str] = None,
+    status: Optional[str] = None,
+    enrollment_status: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50
+):
+    """Get progress report with filtering (admin view)"""
+    try:
+        # Build query
+        query = {}
+        if branch or flow_key or status or enrollment_status:
+            if flow_key:
+                query["flow_key"] = flow_key
+            if status:
+                query["status"] = status
+            if enrollment_status:
+                query["enrollment_status"] = enrollment_status
+            
+            # For branch filtering, we need to join with students/parents
+            if branch:
+                # Get students in the branch first
+                parents_in_branch = await db.parents.find({"branch": branch}).to_list(1000)
+                parent_ids = [p["id"] for p in parents_in_branch]
+                students_in_branch = await db.students.find({"parent_id": {"$in": parent_ids}}).to_list(1000)
+                student_ids = [s["id"] for s in students_in_branch]
+                query["student_id"] = {"$in": student_ids}
+        
+        # Get progress records
+        skip = (page - 1) * limit
+        progress_records = await db.student_enrollment_progress.find(query).skip(skip).limit(limit).to_list(limit)
+        total_count = await db.student_enrollment_progress.count_documents(query)
+        
+        # Enrich with student and parent info
+        enriched_records = []
+        for record in progress_records:
+            if '_id' in record:
+                del record['_id']
+            
+            # Get student info
+            student = await db.students.find_one({"id": record["student_id"]})
+            if student:
+                if '_id' in student:
+                    del student['_id']
+                record["student_info"] = student
+                
+                # Get parent info
+                parent = await db.parents.find_one({"id": student["parent_id"]})
+                if parent:
+                    if '_id' in parent:
+                        del parent['_id']
+                    record["parent_info"] = parent
+            
+            # Get flow info
+            flow = await db.enrollment_flows.find_one({"flow_key": record["flow_key"]})
+            if flow:
+                if '_id' in flow:
+                    del flow['_id']
+                record["flow_info"] = {
+                    "name": flow["name"],
+                    "description": flow["description"],
+                    "total_steps": len(flow["steps"])
+                }
+            
+            enriched_records.append(record)
+        
+        # Calculate summary statistics
+        all_records = await db.student_enrollment_progress.find({}).to_list(10000)
+        stats = {
+            "total_students": len(all_records),
+            "by_status": {},
+            "by_enrollment_status": {},
+            "by_flow": {}
+        }
+        
+        for record in all_records:
+            # Count by status
+            status = record.get("status", "unknown")
+            stats["by_status"][status] = stats["by_status"].get(status, 0) + 1
+            
+            # Count by enrollment status
+            enrollment_status = record.get("enrollment_status", "unknown")
+            stats["by_enrollment_status"][enrollment_status] = stats["by_enrollment_status"].get(enrollment_status, 0) + 1
+            
+            # Count by flow
+            flow_key = record.get("flow_key", "unknown")
+            stats["by_flow"][flow_key] = stats["by_flow"].get(flow_key, 0) + 1
+        
+        return {
+            "records": enriched_records,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "total_pages": (total_count + limit - 1) // limit
+            },
+            "statistics": stats
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching progress report: {str(e)}")
+
 @api_router.post("/signup")
 async def signup(user_data: UserCreate):
     if not user_data.terms_accepted:
