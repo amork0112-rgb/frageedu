@@ -1285,60 +1285,46 @@ const Programs = () => {
 
 const News = () => {
   const [activeCategory, setActiveCategory] = useState('전체');
+  const [newsData, setNewsData] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   const categories = ['전체', '개강소식', '공지사항', '뉴스'];
-  
-  const newsData = [
-    {
-      id: 1,
-      category: '개강소식',
-      title: '2025년 3월 신학기 개강 안내',
-      content: '새 학기를 맞이하여 모든 반의 개강 일정과 준비사항을 안내드립니다.',
-      date: '2025-02-20',
-      image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=600&h=300&fit=crop',
-      featured: true
-    },
-    {
-      id: 2,
-      category: '공지사항',
-      title: '겨울방학 특별 프로그램 접수 시작',
-      content: '창의적 글쓰기와 토론 중심의 겨울방학 집중 영어 캠프 참가자를 모집합니다.',
-      date: '2025-01-15',
-      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=600&h=300&fit=crop'
-    },
-    {
-      id: 3,
-      category: '뉴스',
-      title: 'Frage EDU, 지역 영어교육 혁신상 수상',
-      content: '비판적 사고력 기반 영어교육 프로그램으로 올해의 교육혁신상을 수상했습니다.',
-      date: '2025-01-10',
-      image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=600&h=300&fit=crop'
-    },
-    {
-      id: 4,
-      category: '공지사항',
-      title: '학부모 교육 세미나 개최 안내',
-      content: '자녀의 영어 학습을 도울 수 있는 가정 내 환경 조성법을 알려드립니다.',
-      date: '2025-01-05',
-      image: 'https://images.unsplash.com/photo-1571260899304-425eee4c7efc?q=80&w=600&h=300&fit=crop'
-    },
-    {
-      id: 5,
-      category: '개강소식',
-      title: '중등부 고급반 추가 개강',
-      content: '수요 증가에 따라 중등부 고급반을 추가로 개강합니다.',
-      date: '2025-01-03',
-      image: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=600&h=300&fit=crop'
-    },
-    {
-      id: 6,
-      category: '뉴스',
-      title: '국제 영어 토론대회 우승',
-      content: 'Frage EDU 학생들이 국제 영어 토론대회에서 우수한 성과를 거두었습니다.',
-      date: '2024-12-28',
-      image: 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?q=80&w=600&h=300&fit=crop'
+
+  useEffect(() => {
+    fetchNews();
+  }, [activeCategory]);
+
+  const fetchNews = async () => {
+    try {
+      const params = activeCategory !== '전체' ? `?category=${activeCategory}` : '';
+      const response = await axios.get(`${API}/news${params}`);
+      setNewsData(response.data.articles || []);
+    } catch (error) {
+      console.error('Failed to fetch news:', error);
+      // Fallback to mock data if API fails
+      setNewsData([
+        {
+          id: 1,
+          category: '개강소식',
+          title: '2025년 3월 신학기 개강 안내',
+          content: '새 학기를 맞이하여 모든 반의 개강 일정과 준비사항을 안내드립니다.',
+          created_at: '2025-02-20',
+          image_url: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=600&h=300&fit=crop',
+          featured: true
+        },
+        {
+          id: 2,
+          category: '공지사항',
+          title: '겨울방학 특별 프로그램 접수 시작',
+          content: '창의적 글쓰기와 토론 중심의 겨울방학 집중 영어 캠프 참가자를 모집합니다.',
+          created_at: '2025-01-15',
+          image_url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=600&h=300&fit=crop'
+        }
+      ]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const filteredNews = activeCategory === '전체' 
     ? newsData 
