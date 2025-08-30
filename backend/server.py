@@ -77,6 +77,52 @@ class AuditLog(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     ip: Optional[str] = None
 
+# Frage Market Models
+class Product(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    price: float
+    category: str  # uniform, accessories, books, etc.
+    subcategory: Optional[str] = None
+    brand: Optional[str] = None
+    size_options: List[str] = []  # ["S", "M", "L", "XL"] or ["90", "95", "100"]
+    color_options: List[str] = []  # ["Navy", "White", "Black"]
+    images: List[str] = []  # Image URLs
+    stock_quantity: int = 0
+    is_available: bool = True
+    is_featured: bool = False
+    tags: List[str] = []
+    specifications: Optional[Dict[str, str]] = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CartItem(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    product_id: str
+    quantity: int
+    selected_size: Optional[str] = None
+    selected_color: Optional[str] = None
+    price_at_time: float
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Order(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    order_number: str = Field(default_factory=lambda: f"FG{int(datetime.now().timestamp())}")
+    items: List[Dict[str, Any]]  # Cart items with product details
+    total_amount: float
+    shipping_address: Dict[str, str]
+    contact_info: Dict[str, str]
+    status: str = "pending"  # pending, confirmed, shipped, delivered, cancelled
+    payment_status: str = "pending"  # pending, paid, failed, refunded
+    payment_method: Optional[str] = None
+    tracking_number: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 class UserCreate(BaseModel):
     email: EmailStr
     phone: str
