@@ -115,6 +115,32 @@ const Signup = ({ onSignup }) => {
                 required
               />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="parent_name">학부모 성명</Label>
+                <Input
+                  id="parent_name"
+                  type="text"
+                  placeholder="김학부모"
+                  value={formData.parent_name}
+                  onChange={(e) => setFormData({...formData, parent_name: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="student_name">학생 이름</Label>
+                <Input
+                  id="student_name"
+                  type="text"
+                  placeholder="김학생"
+                  value={formData.student_name}
+                  onChange={(e) => setFormData({...formData, student_name: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
             
             <div className="space-y-2">
               <Label htmlFor="password">비밀번호</Label>
