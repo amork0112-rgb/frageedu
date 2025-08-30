@@ -447,6 +447,28 @@ class ExamReservationCreate(BaseModel):
     level_track: Optional[str] = None
     notes: Optional[str] = None
 
+# Parent Enrollment Form Models
+class EnrollFormRequest(BaseModel):
+    student_id: str
+    postal_code: Optional[str] = None
+    address1: Optional[str] = None
+    address2: Optional[str] = None
+    use_shuttle: bool = False
+    pickup_spot: Optional[str] = None
+    dropoff_spot: Optional[str] = None
+    start_date: Optional[str] = None  # YYYY-MM-DD
+    consent_privacy: bool = False
+    consent_signer: Optional[str] = None
+
+class EnrollFormResponse(BaseModel):
+    student: Dict[str, Any]  # Student info with computed age
+    parent: Dict[str, Any]   # Parent name and phone
+    profile: Optional[Dict[str, Any]] = None  # Existing profile data
+
+class PhotoUploadResponse(BaseModel):
+    ok: bool
+    photo_url: str
+
 # Admin Models
 class Admin(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
