@@ -1361,11 +1361,45 @@ async def signup(user_data: UserCreate):
     
     await db.students.insert_one(student.dict())
     
-    # Create admission data
+    # Create admission data (legacy)
     admission = AdmissionData(household_token=user.household_token)
     admission_dict = admission.dict()
     admission_dict['updated_at'] = admission_dict['updated_at'].isoformat()
     await db.admission_data.insert_one(admission_dict)
+    
+    # Determine flow key based on branch
+    flow_key_mapping = {
+        "kinder": "kinder_regular",  # Default to regular, can be changed by admin
+        "junior": "junior",
+        "middle": "middle"
+    }
+    
+    flow_key = flow_key_mapping.get(user_data.branch, "junior")
+    
+    # Initialize enrollment progress
+    try:
+        # Check if flow exists
+        flow = await db.enrollment_flows.find_one({"flow_key": flow_key, "is_active": True})
+        if flow:
+            # Get first step
+            first_step = min(flow["steps"], key=lambda x: x["order"])
+            
+            # Create progress record
+            progress = StudentEnrollmentProgress(
+                student_id=student.id,
+                household_token=user.household_token,
+                flow_key=flow_key,
+                current_step=first_step["key"]
+            )
+            
+            progress_dict = progress.dict()
+            progress_dict['created_at'] = progress_dict['created_at'].isoformat()
+            progress_dict['updated_at'] = progress_dict['updated_at'].isoformat()
+            
+            await db.student_enrollment_progress.insert_one(progress_dict)
+    except Exception as e:
+        # Don't fail signup if progress init fails, just log it
+        print(f"Warning: Failed to initialize progress for student {student.id}: {str(e)}")
     
     # Create JWT token
     token = create_jwt_token(user.id, user.household_token)
