@@ -2022,7 +2022,6 @@ async def get_parent_dashboard(current_user: UserResponse = Depends(get_current_
                 "grade": s.get("grade", ""),
                 "birthdate": s.get("birthdate", "")
             } for s in students],
-            test_schedules=test_schedules,
             test_results=test_results,
             class_assignments=class_assignments,
             enrollment_status=enrollment_status
