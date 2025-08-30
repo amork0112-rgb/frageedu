@@ -1529,8 +1529,8 @@ const Login = ({ onLogin }) => {
   );
 };
 
-// Admissions Portal Landing
-const AdmissionsPortal = () => {
+// Internal Admissions Portal (for logged-in users)
+const InternalAdmissionsPortal = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
       <Header />
@@ -1542,30 +1542,6 @@ const AdmissionsPortal = () => {
           <p className="text-xl text-gray-600">
             Frage EDU 입학을 위한 모든 절차를 온라인으로 완료하세요
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-            <Users className="w-16 h-16 text-purple-600 mx-auto mb-4" />
-            <h3 className="text-2xl font-semibold mb-4">신규 학부모</h3>
-            <p className="text-gray-600 mb-6">
-              처음 방문하시는 분은 여기서 회원가입을 진행해주세요.
-            </p>
-            <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={() => window.location.href = '/signup'}>
-              회원가입하기
-            </Button>
-          </Card>
-
-          <Card className="p-8 text-center hover:shadow-lg transition-shadow">
-            <Shield className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h3 className="text-2xl font-semibold mb-4">기존 학부모</h3>
-            <p className="text-gray-600 mb-6">
-              이미 계정이 있으시면 로그인하여 입학 절차를 계속 진행하세요.
-            </p>
-            <Button variant="outline" className="w-full" onClick={() => window.location.href = '/login'}>
-              로그인하기
-            </Button>
-          </Card>
         </div>
 
         <Card className="p-8 bg-white/80 backdrop-blur-sm">
@@ -1602,6 +1578,210 @@ const AdmissionsPortal = () => {
           </div>
         </Card>
       </div>
+      <Footer />
+    </div>
+  );
+};
+
+// New Public Admissions Page
+const AdmissionsPage = () => {
+  const programsData = [
+    {
+      id: 'kinder',
+      title: 'Kindergarten English',
+      subtitle: '유치부 (5-7세)',
+      description: '놀이 중심의 영어 교육으로 자연스러운 언어 습득을 도와드립니다.',
+      examRequired: false,
+      consultationText: '상담 및 레벨테스트 신청',
+      action: () => window.location.href = '/consultation'
+    },
+    {
+      id: 'junior',
+      title: 'Elementary English',
+      subtitle: '초등부 (8-12세)', 
+      description: '체계적인 읽기, 쓰기 교육과 프로젝트 기반 학습을 진행합니다.',
+      examRequired: true,
+      examText: '입학시험 예약',
+      action: () => window.location.href = '/exam/reserve?brchType=junior'
+    },
+    {
+      id: 'middle', 
+      title: 'Middle School English',
+      subtitle: '중등부 (13-16세)',
+      description: '비판적 사고력과 고급 영어 실력을 기르는 심화 과정입니다.',
+      examRequired: true,
+      examText: '입학시험 예약',
+      action: () => window.location.href = '/exam/reserve?brchType=middle'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      
+      {/* Hero Section */}
+      <section className="pt-24 pb-16 bg-gradient-to-br from-purple-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+            Frage EDU 입학 안내
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            아이의 미래를 위한 첫걸음을 함께 시작하세요
+          </p>
+        </div>
+      </section>
+
+      {/* Programs Section */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">프로그램별 입학 절차</h2>
+            <p className="text-xl text-gray-600">연령과 수준에 맞는 프로그램을 선택하고 입학을 신청하세요</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+            {programsData.map((program) => (
+              <Card key={program.id} className="rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                <div className={`h-48 rounded-t-xl ${
+                  program.id === 'kinder' 
+                    ? 'bg-gradient-to-br from-yellow-100 to-orange-100'
+                    : program.id === 'junior'
+                    ? 'bg-gradient-to-br from-green-100 to-emerald-100'
+                    : 'bg-gradient-to-br from-blue-100 to-indigo-100'
+                }`}>
+                  <div className="h-full flex items-center justify-center">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
+                      program.id === 'kinder'
+                        ? 'bg-orange-200'
+                        : program.id === 'junior' 
+                        ? 'bg-green-200'
+                        : 'bg-blue-200'
+                    }`}>
+                      <BookOpen className={`w-10 h-10 ${
+                        program.id === 'kinder'
+                          ? 'text-orange-600'
+                          : program.id === 'junior'
+                          ? 'text-green-600' 
+                          : 'text-blue-600'
+                      }`} />
+                    </div>
+                  </div>
+                </div>
+                
+                <CardContent className="p-8">
+                  <div className="mb-4">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{program.title}</h3>
+                    <p className="text-purple-600 font-medium">{program.subtitle}</p>
+                  </div>
+                  
+                  <p className="text-gray-600 mb-6">{program.description}</p>
+                  
+                  <div className="space-y-3">
+                    {program.examRequired ? (
+                      <>
+                        <Button 
+                          onClick={program.action}
+                          className="w-full bg-purple-600 hover:bg-purple-700"
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          {program.examText}
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => window.location.href = `/exam/guide?brchType=${program.id}`}
+                          className="w-full"
+                        >
+                          시험 안내보기
+                        </Button>
+                      </>
+                    ) : (
+                      <Button 
+                        onClick={program.action}
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        {program.consultationText}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Process Steps */}
+          <div className="text-center mb-12">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">입학 절차</h3>
+            <p className="text-gray-600">간단한 4단계로 Frage EDU에 합류하세요</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">1. 프로그램 선택</h3>
+              <p className="text-gray-600 text-sm">연령에 맞는 적합한 프로그램을 선택하세요</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">2. 시험 예약</h3>
+              <p className="text-gray-600 text-sm">온라인으로 편리하게 입학시험을 예약하세요</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookmarkCheck className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">3. 시험 응시</h3>
+              <p className="text-gray-600 text-sm">예약된 일시에 캠퍼스에서 레벨테스트를 받으세요</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Award className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">4. 수업 시작</h3>
+              <p className="text-gray-600 text-sm">결과 확인 후 적합한 클래스에서 학습을 시작하세요</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Registration CTA */}
+      <section className="py-16 bg-gradient-to-br from-purple-600 to-indigo-600 text-white">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+            지금 바로 시작하세요
+          </h2>
+          <p className="text-xl text-purple-100 mb-8">
+            회원가입 후 입학 절차를 진행하고 내 아이만의 학습 여정을 시작하세요
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              variant="secondary" 
+              className="bg-white text-purple-600 hover:bg-gray-100"
+              onClick={() => window.location.href = '/signup'}
+            >
+              회원가입하기
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="border-white text-white hover:bg-white hover:text-purple-600"
+              onClick={() => window.location.href = '/login'}
+            >
+              로그인
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <Footer />
     </div>
   );
