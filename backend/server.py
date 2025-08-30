@@ -448,6 +448,58 @@ class ParentDashboardResponse(BaseModel):
     class_assignments: List[ClassAssignmentResponse]
     enrollment_status: str  # new, test_scheduled, test_taken, enrolled, active
 
+# Flow Management Request/Response Models
+class EnrollmentFlowResponse(BaseModel):
+    id: str
+    flow_key: str
+    name: str
+    description: str
+    branch: str
+    program_type: str
+    steps: List[Dict[str, Any]]
+    is_active: bool
+
+class ProgressResponse(BaseModel):
+    student_id: str
+    student_name: str
+    flow_key: str
+    current_step: str
+    completed_steps: List[str]
+    total_steps: int
+    progress_percentage: float
+    status: str
+    enrollment_status: str
+    next_action: Optional[str]
+
+class FlowEventRequest(BaseModel):
+    event_type: str
+    step_key: str
+    event_data: Dict[str, Any] = {}
+
+class PaymentRequest(BaseModel):
+    payment_type: str
+    amount: float
+    payment_method: str
+    reference_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class ClassPlacementRequest(BaseModel):
+    class_name: str
+    teacher_name: str
+    schedule: str
+    classroom: str
+    level: Optional[str] = None
+    start_date: str  # ISO string
+
+class DashboardSummaryResponse(BaseModel):
+    student_info: Dict[str, Any]
+    progress: ProgressResponse
+    current_tasks: List[Dict[str, Any]]
+    completed_tasks: List[Dict[str, Any]]
+    pending_payments: List[Dict[str, Any]]
+    class_assignments: List[Dict[str, Any]]
+    announcements: List[Dict[str, Any]]
+
 # Frage Market Request/Response Models
 class ProductResponse(BaseModel):
     id: str
