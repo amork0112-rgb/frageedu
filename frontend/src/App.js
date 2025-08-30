@@ -2448,6 +2448,309 @@ const AdminLogin = () => {
   );
 };
 
+// Welcome Admission Guide Component
+const WelcomeAdmissionGuide = () => {
+  const { user, token } = useAuth();
+  const [parentInfo, setParentInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    fetchParentInfo();
+  }, [token]);
+
+  const fetchParentInfo = async () => {
+    try {
+      const response = await axios.get(`${API}/parent/dashboard`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setParentInfo(response.data);
+    } catch (error) {
+      console.error('Failed to fetch parent info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const admissionSteps = [
+    {
+      id: 1,
+      title: "동의서 작성",
+      description: "입학에 필요한 각종 동의서를 작성해주세요",
+      icon: FileText,
+      status: "pending",
+      color: "bg-blue-50 border-blue-200 text-blue-700"
+    },
+    {
+      id: 2,
+      title: "서류 제출",
+      description: "필요 서류를 업로드하고 정보를 입력해주세요",
+      icon: Upload,
+      status: "pending", 
+      color: "bg-green-50 border-green-200 text-green-700"
+    },
+    {
+      id: 3,
+      title: "안내사항 확인",
+      description: "학부모 안내사항을 꼼꼼히 확인해주세요",
+      icon: BookOpen,
+      status: "pending",
+      color: "bg-purple-50 border-purple-200 text-purple-700"
+    },
+    {
+      id: 4,
+      title: "체크리스트 완료",
+      description: "최종 체크리스트를 완료하여 입학 절차를 마무리해주세요",
+      icon: CheckCircle,
+      status: "pending",
+      color: "bg-orange-50 border-orange-200 text-orange-700"
+    }
+  ];
+
+  const branchInfo = {
+    'kinder': { name: '유치부', age: '5-7세', color: 'bg-pink-100 text-pink-800' },
+    'junior': { name: '초등부', age: '8-12세', color: 'bg-blue-100 text-blue-800' },
+    'middle': { name: '중등부', age: '13-16세', color: 'bg-purple-100 text-purple-800' }
+  };
+
+  const currentBranch = branchInfo[parentInfo?.parent_info?.branch] || branchInfo['junior'];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
+      <Header />
+      
+      <div className="pt-20 pb-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Welcome Section */}
+          <div className="text-center mb-12">
+            <div className="mb-6">
+              <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Star className="w-10 h-10 text-white" />
+              </div>
+            </div>
+            
+            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              🎉 환영합니다!
+            </h1>
+            
+            <p className="text-xl text-gray-600 mb-2">
+              <span className="font-semibold text-purple-600">{parentInfo?.parent_info?.name}</span>님, 
+              <span className="font-semibold"> Frage EDU</span>에 가입해주셔서 감사합니다
+            </p>
+            
+            <div className="flex items-center justify-center space-x-4 mb-6">
+              <Badge className={currentBranch.color}>
+                {currentBranch.name} ({currentBranch.age})
+              </Badge>
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-600">학생: {parentInfo?.students?.[0]?.name}</span>
+            </div>
+
+            <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-purple-500 mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                🚀 이제 입학 절차를 시작해보세요!
+              </h3>
+              <p className="text-gray-600">
+                아래 4단계를 순서대로 완료하시면 입학 절차가 마무리됩니다.
+                각 단계는 약 5-10분 정도 소요되며, 언제든지 중간에 저장하고 나중에 이어서 진행하실 수 있습니다.
+              </p>
+            </div>
+          </div>
+
+          {/* Admission Steps */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            {admissionSteps.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <Card key={step.id} className={`border-2 hover:shadow-lg transition-all duration-300 ${step.color}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-md">
+                          <Icon className="w-6 h-6 text-purple-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-lg font-semibold">
+                            {step.id}단계. {step.title}
+                          </h3>
+                          <Badge variant="outline" className="text-xs">
+                            {index + 1}/4
+                          </Badge>
+                        </div>
+                        <p className="text-sm mb-4 opacity-80">
+                          {step.description}
+                        </p>
+                        <Button 
+                          className="w-full bg-white text-purple-600 hover:bg-purple-50 border border-purple-200"
+                          onClick={() => {
+                            const routes = ['/consent', '/form', '/guide', '/checklist'];
+                            window.location.href = `${routes[index]}?id=${parentInfo?.parent_info?.household_token}`;
+                          }}
+                        >
+                          {step.title} 시작하기
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Additional Information */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <Card className="bg-white shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Info className="w-5 h-5 text-blue-600" />
+                  <span>입학 안내</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div>
+                      <p className="font-medium text-gray-900">필수 서류</p>
+                      <p className="text-sm text-gray-600">주민등록등본, 학생 건강검진결과서, 예방접종증명서</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div>
+                      <p className="font-medium text-gray-900">입학 일정</p>
+                      <p className="text-sm text-gray-600">서류 제출 완료 후 2-3일 내 입학 확정 통보</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    <div>
+                      <p className="font-medium text-gray-900">문의사항</p>
+                      <p className="text-sm text-gray-600">053-754-0577 또는 frage0577@gmail.com</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Lightbulb className="w-5 h-5" />
+                  <span>도움말</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="font-medium mb-2">💡 진행 상황 저장</p>
+                    <p className="text-sm text-purple-100">
+                      각 단계를 완료하면 자동으로 저장되어 언제든지 이어서 진행할 수 있습니다.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-2">📱 모바일 지원</p>
+                    <p className="text-sm text-purple-100">
+                      모바일에서도 편리하게 입학 절차를 진행하실 수 있습니다.
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-2">🔒 개인정보 보호</p>
+                    <p className="text-sm text-purple-100">
+                      모든 개인정보는 안전하게 암호화되어 보호됩니다.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <Card className="bg-white shadow-lg">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">
+                바로 시작하기
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button 
+                  variant="outline" 
+                  className="flex flex-col items-center p-4 h-auto space-y-2"
+                  onClick={() => window.location.href = `/consent?id=${parentInfo?.parent_info?.household_token}`}
+                >
+                  <FileText className="w-6 h-6 text-purple-600" />
+                  <span className="text-sm">동의서</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex flex-col items-center p-4 h-auto space-y-2"
+                  onClick={() => window.location.href = `/form?id=${parentInfo?.parent_info?.household_token}`}
+                >
+                  <Upload className="w-6 h-6 text-green-600" />
+                  <span className="text-sm">서류제출</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex flex-col items-center p-4 h-auto space-y-2"
+                  onClick={() => window.location.href = `/guide?id=${parentInfo?.parent_info?.household_token}`}
+                >
+                  <BookOpen className="w-6 h-6 text-blue-600" />
+                  <span className="text-sm">안내확인</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex flex-col items-center p-4 h-auto space-y-2"
+                  onClick={() => window.location.href = `/checklist?id=${parentInfo?.parent_info?.household_token}`}
+                >
+                  <CheckCircle className="w-6 h-6 text-orange-600" />
+                  <span className="text-sm">체크리스트</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Navigation */}
+          <div className="text-center mt-8">
+            <Button 
+              onClick={() => window.location.href = '/parent/dashboard'}
+              variant="outline"
+              className="mr-4"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              부모 대시보드로
+            </Button>
+            <Button 
+              onClick={() => window.location.href = `/consent?id=${parentInfo?.parent_info?.household_token}`}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              입학 절차 시작하기
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      <Footer />
+    </div>
+  );
+};
+
 // Admin Dashboard Component
 const AdminDashboard = () => {
   const [adminToken] = useState(localStorage.getItem('adminToken'));
