@@ -218,8 +218,21 @@ async def update_consent(token: str, consent_data: ConsentUpdate):
     if not admission:
         raise HTTPException(status_code=404, detail="Admission data not found")
     
+    # Get user info for signature
+    user = await db.users.find_one({"household_token": token})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Add signature information
+    consent_with_signature = consent_data.dict()
+    consent_with_signature.update({
+        "parent_signature": user['parent_name'],
+        "student_name": user['student_name'],
+        "signed_at": datetime.now(timezone.utc).isoformat()
+    })
+    
     update_data = {
-        "consent_data": consent_data.dict(),
+        "consent_data": consent_with_signature,
         "consent_status": "completed",
         "updated_at": datetime.now(timezone.utc)
     }
@@ -229,7 +242,11 @@ async def update_consent(token: str, consent_data: ConsentUpdate):
         {"$set": update_data}
     )
     
-    return {"message": "Consent updated successfully"}
+    return {"message": "Consent updated successfully", "signature_info": {
+        "parent_name": user['parent_name'],
+        "student_name": user['student_name'],
+        "signed_at": consent_with_signature["signed_at"]
+    }}
 
 @api_router.put("/admission/{token}/forms")
 async def update_forms(token: str, forms_data: FormsUpdate):
