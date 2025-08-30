@@ -438,6 +438,16 @@ async def login(login_data: UserLogin):
     if not user or not verify_password(login_data.password, user['password_hash']):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # Check if user is active
+    if user.get('status') == 'disabled':
+        raise HTTPException(status_code=401, detail="Account is disabled")
+    
+    # Update last login
+    await db.users.update_one(
+        {"id": user['id']},
+        {"$set": {"last_login_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
     token = create_jwt_token(user['id'], user['household_token'])
     
     return {
