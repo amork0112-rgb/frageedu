@@ -3223,18 +3223,32 @@ async def update_student_enrollment_status(
 @api_router.post("/admin/students/{student_id}/assign-class")
 async def assign_student_to_class(
     student_id: str,
-    class_assignment: Dict[str, Any],
+    assignment_request: ClassAssignmentRequest,
     current_admin: AdminResponse = Depends(get_current_admin)
 ):
-    """Admin endpoint to assign student to class"""
+    """Admin endpoint to assign student to class and transition to enrolled status"""
     try:
-        # Verify student exists
+        # Check permissions
+        if not await has_permission(current_admin.id, current_admin.role, "can_edit_class"):
+            raise HTTPException(status_code=403, detail="Permission denied: cannot assign classes")
+        
+        # Verify student exists and is in admitted_pending status
         student = await db.students.find_one({"id": student_id})
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
         
+        if student.get("status") != "admitted_pending":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Student must be in 'admitted_pending' status to assign class. Current status: {student.get('status')}"
+            )
+        
+        # Check admin branch access
+        if not await can_access_branch(current_admin.id, current_admin.role, student.get("branch")):
+            raise HTTPException(status_code=403, detail="Access denied: cannot manage this student's branch")
+        
         # Check if assignment already exists
-        existing = await db.class_placements.find_one({
+        existing = await db.class_assignments.find_one({
             "student_id": student_id,
             "status": "active"
         })
@@ -3242,84 +3256,281 @@ async def assign_student_to_class(
         if existing:
             raise HTTPException(status_code=400, detail="Student already assigned to active class")
         
+        # START TRANSACTION - Create assignment and update student status
         # Create assignment
         assignment = ClassAssignment(
             student_id=student_id,
-            class_id=class_assignment.get("class_id", f"class_{student_id}"),
-            class_name=class_assignment["class_name"],
-            teacher_name=class_assignment["teacher_name"],
-            teacher_id=class_assignment.get("teacher_id"),
-            weekday=class_assignment["weekday"],
-            time_start=class_assignment["time_start"],
-            time_end=class_assignment["time_end"],
-            classroom=class_assignment["classroom"],
-            level=class_assignment.get("level"),
-            start_date=datetime.fromisoformat(class_assignment["start_date"]),
+            class_id=assignment_request.class_id,
+            class_name=assignment_request.class_name,
+            homeroom_teacher=assignment_request.homeroom_teacher,
+            weekday=assignment_request.weekday,
+            time_start=assignment_request.time_start,
+            time_end=assignment_request.time_end,
+            classroom=assignment_request.classroom,
+            level=assignment_request.level,
+            effective_from=datetime.now(timezone.utc),
             assigned_by=current_admin.id
         )
         
         assignment_dict = assignment.dict()
         assignment_dict['created_at'] = assignment_dict['created_at'].isoformat()
-        assignment_dict['start_date'] = assignment_dict['start_date'].isoformat()
+        assignment_dict['effective_from'] = assignment_dict['effective_from'].isoformat()
         
-        await db.class_placements.insert_one(assignment_dict)
+        await db.class_assignments.insert_one(assignment_dict)
         
-        # Update enrollment status to enrolled
-        await db.student_enrollment_progress.update_one(
-            {"student_id": student_id},
+        # Update student status to enrolled
+        prev_status = student.get("status")
+        await db.students.update_one(
+            {"id": student_id},
             {
                 "$set": {
-                    "enrollment_status": "enrolled",
+                    "status": "enrolled",
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
             }
         )
         
-        # Trigger placement event
-        await trigger_flow_event(
-            student_id,
-            "class.assigned", 
-            "placement",
-            {
-                "class_name": class_assignment["class_name"],
-                "teacher": class_assignment["teacher_name"],
-                "classroom": class_assignment["classroom"],
-                "schedule": f"{class_assignment['weekday']} {class_assignment['time_start']}-{class_assignment['time_end']}",
-                "assigned_by": f"admin:{current_admin.id}"
-            },
-            f"admin:{current_admin.id}"
-        )
-        
-        # Log admin action
+        # Log audit trail
         await log_audit(
             current_admin.id,
             "ASSIGN_CLASS",
             "Student",
-            student_id, 
-            class_assignment
-        )
-        
-        # Send notification
-        await send_alimtalk_notification(
             student_id,
-            "class_assigned",
             {
-                "class_name": class_assignment["class_name"],
-                "teacher": class_assignment["teacher_name"],
-                "start_date": class_assignment["start_date"]
+                "class_name": assignment_request.class_name,
+                "homeroom_teacher": assignment_request.homeroom_teacher,
+                "prev_status": prev_status,
+                "new_status": "enrolled"
             }
         )
         
+        # Send notification (placeholder)
+        await send_status_change_notification(student_id, "class_assigned", {
+            "class_name": assignment_request.class_name,
+            "teacher": assignment_request.homeroom_teacher
+        })
+        
         return {
-            "message": "Class assignment successful",
-            "assignment_id": assignment.id,
-            "class_name": class_assignment["class_name"]
+            "message": "Class assigned successfully and student enrolled",
+            "student_id": student_id,
+            "class_assignment_id": assignment.id,
+            "previous_status": prev_status,
+            "current_status": "enrolled"
         }
         
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Error assigning class: {str(e)}")
+
+@api_router.post("/admin/students/{student_id}/approve")
+async def approve_student_admission(
+    student_id: str,
+    approval_request: StudentApprovalRequest,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Admin endpoint to approve student admission (pending -> admitted_pending)"""
+    try:
+        # Check permissions
+        if not await has_permission(current_admin.id, current_admin.role, "can_edit_student"):
+            raise HTTPException(status_code=403, detail="Permission denied: cannot approve students")
+        
+        # Verify student exists and is in correct status
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        current_status = student.get("status")
+        if current_status not in ["pending", "reserved_test"]:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Student must be in 'pending' or 'reserved_test' status to approve. Current status: {current_status}"
+            )
+        
+        # Check admin branch access
+        if not await can_access_branch(current_admin.id, current_admin.role, student.get("branch")):
+            raise HTTPException(status_code=403, detail="Access denied: cannot manage this student's branch")
+        
+        # Update student status to admitted_pending
+        await db.students.update_one(
+            {"id": student_id},
+            {
+                "$set": {
+                    "status": "admitted_pending",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Log audit trail
+        await log_audit(
+            current_admin.id,
+            "APPROVE_ADMISSION",
+            "Student",
+            student_id,
+            {
+                "prev_status": current_status,
+                "new_status": "admitted_pending",
+                "notes": approval_request.notes
+            }
+        )
+        
+        # Send notification (placeholder)
+        await send_status_change_notification(student_id, "admission_approved", {
+            "notes": approval_request.notes
+        })
+        
+        return {
+            "message": "Student admission approved successfully",
+            "student_id": student_id,
+            "previous_status": current_status,
+            "current_status": "admitted_pending"
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error approving admission: {str(e)}")
+
+@api_router.patch("/admin/students/{student_id}/status")
+async def update_student_status(
+    student_id: str,
+    status_update: StudentStatusUpdate,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Admin endpoint to update student status (leave, withdrawn, etc.)"""
+    try:
+        # Check permissions
+        if not await has_permission(current_admin.id, current_admin.role, "can_edit_student"):
+            raise HTTPException(status_code=403, detail="Permission denied: cannot update student status")
+        
+        # Verify student exists
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Check admin branch access
+        if not await can_access_branch(current_admin.id, current_admin.role, student.get("branch")):
+            raise HTTPException(status_code=403, detail="Access denied: cannot manage this student's branch")
+        
+        # Validate status transition
+        valid_statuses = ["pending", "reserved_test", "admitted_pending", "enrolled", "leave", "withdrawn"]
+        if status_update.status not in valid_statuses:
+            raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+        
+        current_status = student.get("status")
+        
+        # Validate specific transitions
+        if status_update.status == "enrolled":
+            # enrolled requires class assignment
+            class_assignment = await db.class_assignments.find_one({
+                "student_id": student_id,
+                "status": "active"
+            })
+            if not class_assignment:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Cannot set status to 'enrolled': student must have an active class assignment"
+                )
+        
+        # Update student status
+        await db.students.update_one(
+            {"id": student_id},
+            {
+                "$set": {
+                    "status": status_update.status,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Log audit trail
+        await log_audit(
+            current_admin.id,
+            "UPDATE_STATUS",
+            "Student",
+            student_id,
+            {
+                "prev_status": current_status,
+                "new_status": status_update.status,
+                "notes": status_update.notes
+            }
+        )
+        
+        # Send notification for certain status changes
+        if status_update.status in ["leave", "withdrawn"]:
+            await send_status_change_notification(student_id, f"status_{status_update.status}", {
+                "notes": status_update.notes
+            })
+        
+        return {
+            "message": f"Student status updated to {status_update.status}",
+            "student_id": student_id,
+            "previous_status": current_status,
+            "current_status": status_update.status
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error updating student status: {str(e)}")
+
+@api_router.post("/admin/students/{student_id}/reserve-test")
+async def reserve_student_test(
+    student_id: str,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Admin endpoint to reserve test for student (pending -> reserved_test)"""
+    try:
+        # Check permissions
+        if not await has_permission(current_admin.id, current_admin.role, "can_edit_student"):
+            raise HTTPException(status_code=403, detail="Permission denied: cannot reserve tests")
+        
+        # Verify student exists and is in pending status
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        if student.get("status") != "pending":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Student must be in 'pending' status to reserve test. Current status: {student.get('status')}"
+            )
+        
+        # Update student status to reserved_test
+        await db.students.update_one(
+            {"id": student_id},
+            {
+                "$set": {
+                    "status": "reserved_test",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Log audit trail
+        await log_audit(
+            current_admin.id,
+            "RESERVE_TEST",
+            "Student",
+            student_id,
+            {
+                "prev_status": "pending",
+                "new_status": "reserved_test"
+            }
+        )
+        
+        return {
+            "message": "Test reserved successfully",
+            "student_id": student_id,
+            "previous_status": "pending",
+            "current_status": "reserved_test"
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error reserving test: {str(e)}")
 
 @api_router.get("/admin/students/{student_id}/dashboard-preview")
 async def get_student_dashboard_preview(
