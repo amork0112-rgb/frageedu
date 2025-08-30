@@ -2831,39 +2831,74 @@ async def get_student_dashboard_preview(
 
 @api_router.post("/find-username")
 async def find_username(request: FindUsernameRequest):
-    """Find username by email address"""
+    """Find username by parent name, student name and birthdate"""
     try:
-        # Look for user by email
-        user = await db.users.find_one({"email": request.email.lower()})
+        # Find student by name and birthdate
+        student = await db.students.find_one({
+            "name": request.student_name,
+            "birthdate": request.student_birthdate
+        })
+        
+        if not student:
+            # Don't reveal if student exists or not for security
+            return {"message": "입력하신 정보로 계정을 찾을 수 없습니다. 정보를 다시 확인해주세요."}
+        
+        # Find parent by student's parent_id and name
+        parent = await db.parents.find_one({
+            "id": student["parent_id"],
+            "name": request.parent_name
+        })
+        
+        if not parent:
+            return {"message": "입력하신 정보로 계정을 찾을 수 없습니다. 정보를 다시 확인해주세요."}
+        
+        # Find user account
+        user = await db.users.find_one({"id": parent["user_id"]})
         
         if not user:
-            # Don't reveal if email exists or not for security
-            return {"message": "이메일 주소로 계정 정보를 전송했습니다."}
-        
-        # For parent accounts, the "username" is typically the email
-        # But we'll send helpful account info
-        account_info = {
-            "name": user.get("name", ""),
-            "email": user.get("email", ""),
-            "role": user.get("role", "parent"),
-            "created_date": user.get("created_at", "")[:10]  # YYYY-MM-DD format
-        }
-        
-        # In a real system, you would send this via email
-        # For now, we'll return it (but in production, never return user data)
-        print(f"Account info for {request.email}: Name: {account_info['name']}, Role: {account_info['role']}")
+            return {"message": "입력하신 정보로 계정을 찾을 수 없습니다. 정보를 다시 확인해주세요."}
         
         # Log the account recovery attempt
         recovery_log = {
             "type": "username_recovery",
-            "email": request.email,
+            "parent_name": request.parent_name,
+            "student_name": request.student_name,
+            "student_birthdate": request.student_birthdate,
+            "found_email": user.get("email", ""),
             "user_id": user.get("id"),
             "ip": "system",  # Should get real IP
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.account_recovery_logs.insert_one(recovery_log)
         
-        return {"message": "계정 정보를 이메일로 전송했습니다. 이메일을 확인해주세요."}
+        # In production, send this via SMS or secure method
+        # For demo, we'll return the masked email
+        email = user.get("email", "")
+        if email:
+            # Mask email for security: test***@example.com
+            email_parts = email.split("@")
+            if len(email_parts) == 2:
+                username = email_parts[0]
+                domain = email_parts[1]
+                if len(username) > 3:
+                    masked_username = username[:2] + "*" * (len(username) - 2)
+                else:
+                    masked_username = username[0] + "*" * (len(username) - 1)
+                masked_email = f"{masked_username}@{domain}"
+            else:
+                masked_email = email
+        else:
+            masked_email = "이메일 정보 없음"
+        
+        return {
+            "message": "계정을 찾았습니다!",
+            "found_account": {
+                "parent_name": parent.get("name", ""),
+                "email": masked_email,
+                "student_name": student.get("name", ""),
+                "created_date": user.get("created_at", "")[:10] if user.get("created_at") else ""
+            }
+        }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail="계정 찾기 처리 중 오류가 발생했습니다.")
