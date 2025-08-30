@@ -2243,6 +2243,280 @@ const Signup = ({ onSignup }) => {
   );
 };
 
+// Find Username Component
+const FindUsername = ({ onBack }) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await axios.post(`${API}/find-username`, { email });
+      setSuccess(true);
+    } catch (error) {
+      setError(error.response?.data?.detail || '아이디 찾기 처리 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-green-600">아이디 찾기 완료</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+          <p className="text-gray-700">
+            입력하신 이메일 주소로 계정 정보를 전송했습니다.<br />
+            이메일을 확인해주세요.
+          </p>
+          <div className="space-y-2">
+            <Button onClick={onBack} variant="outline" className="w-full">
+              로그인으로 돌아가기
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-bold text-gray-900">아이디 찾기</CardTitle>
+        <CardDescription>가입 시 사용한 이메일 주소를 입력하세요</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="find-email">이메일 주소</Label>
+            <Input
+              id="find-email"
+              type="email"
+              placeholder="example@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          
+          {error && (
+            <div className="text-red-600 text-sm">{error}</div>
+          )}
+          
+          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            {loading ? "처리 중..." : "아이디 찾기"}
+          </Button>
+          
+          <Button type="button" onClick={onBack} variant="outline" className="w-full">
+            로그인으로 돌아가기
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Reset Password Component
+const ResetPassword = ({ onBack }) => {
+  const [step, setStep] = useState(1); // 1: email, 2: token, 3: success
+  const [formData, setFormData] = useState({
+    email: '',
+    resetToken: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [demoToken, setDemoToken] = useState(''); // For demo purposes
+
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await axios.post(`${API}/reset-password`, { email: formData.email });
+      setDemoToken(response.data.demo_token); // For demo - remove in production
+      setStep(2);
+    } catch (error) {
+      setError(error.response?.data?.detail || '비밀번호 재설정 요청 처리 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTokenSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError('새 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    if (formData.newPassword.length < 6) {
+      setError('비밀번호는 6자 이상이어야 합니다.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await axios.post(`${API}/reset-password/confirm`, {
+        email: formData.email,
+        reset_token: formData.resetToken,
+        new_password: formData.newPassword
+      });
+      setStep(3);
+    } catch (error) {
+      setError(error.response?.data?.detail || '비밀번호 변경 처리 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (step === 3) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-green-600">비밀번호 변경 완료</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+          <p className="text-gray-700">
+            비밀번호가 성공적으로 변경되었습니다.<br />
+            새 비밀번호로 로그인해주세요.
+          </p>
+          <Button onClick={onBack} className="w-full bg-purple-600 hover:bg-purple-700">
+            로그인하러 가기
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-bold text-gray-900">
+          {step === 1 ? '비밀번호 재설정' : '인증번호 확인'}
+        </CardTitle>
+        <CardDescription>
+          {step === 1 
+            ? '가입 시 사용한 이메일 주소를 입력하세요' 
+            : '이메일로 전송된 6자리 인증번호를 입력하세요'
+          }
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {step === 1 ? (
+          <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reset-email">이메일 주소</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                placeholder="example@email.com"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                required
+              />
+            </div>
+            
+            {error && (
+              <div className="text-red-600 text-sm">{error}</div>
+            )}
+            
+            <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700" disabled={loading}>
+              {loading ? "처리 중..." : "인증번호 전송"}
+            </Button>
+            
+            <Button type="button" onClick={onBack} variant="outline" className="w-full">
+              로그인으로 돌아가기
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleTokenSubmit} className="space-y-4">
+            {demoToken && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>데모용 인증번호:</strong> {demoToken}
+                </p>
+                <p className="text-xs text-yellow-600 mt-1">
+                  실제 서비스에서는 이메일로만 전송됩니다.
+                </p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="reset-token">인증번호 (6자리)</Label>
+              <Input
+                id="reset-token"
+                type="text"
+                placeholder="123456"
+                maxLength="6"
+                value={formData.resetToken}
+                onChange={(e) => setFormData({...formData, resetToken: e.target.value})}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-password">새 비밀번호</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="새 비밀번호 (6자 이상)"
+                value={formData.newPassword}
+                onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">새 비밀번호 확인</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="새 비밀번호 다시 입력"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                required
+              />
+            </div>
+            
+            {error && (
+              <div className="text-red-600 text-sm">{error}</div>
+            )}
+            
+            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
+              {loading ? "변경 중..." : "비밀번호 변경"}
+            </Button>
+            
+            <Button 
+              type="button" 
+              onClick={() => setStep(1)} 
+              variant="outline" 
+              className="w-full"
+            >
+              이메일 다시 입력
+            </Button>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+// Login Component (Updated with Find ID/Password links)
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({
     email: '',
