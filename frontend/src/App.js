@@ -6571,6 +6571,590 @@ const AdmissionsPage = () => {
   );
 };
 
+// Parent Enrollment Form Component
+const ParentEnrollForm = () => {
+  const { user, token } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState(null);
+  const [form, setForm] = useState({
+    postal_code: '',
+    address1: '',
+    address2: '',
+    use_shuttle: false,
+    pickup_spot: '',
+    dropoff_spot: '',
+    start_date: '',
+    consent_privacy: false,
+    consent_signer: ''
+  });
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [showAddressSearch, setShowAddressSearch] = useState(false);
+  const [addressSearchQuery, setAddressSearchQuery] = useState('');
+  const [addressResults, setAddressResults] = useState([]);
+
+  const studentId = new URLSearchParams(window.location.search).get('studentId');
+
+  useEffect(() => {
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
+    if (!studentId) {
+      window.location.href = '/parent/dashboard';
+      return;
+    }
+    fetchFormData();
+  }, [token, studentId]);
+
+  const fetchFormData = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API}/parent/enroll-form?studentId=${studentId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      setData(response.data);
+      
+      // Pre-fill form with existing data
+      if (response.data.profile) {
+        setForm(prev => ({
+          ...prev,
+          postal_code: response.data.profile.postal_code || '',
+          address1: response.data.profile.address1 || '',
+          address2: response.data.profile.address2 || '',
+          use_shuttle: !!response.data.profile.use_shuttle,
+          pickup_spot: response.data.profile.pickup_spot || '',
+          dropoff_spot: response.data.profile.dropoff_spot || '',
+          start_date: response.data.profile.start_date || '',
+          consent_privacy: !!response.data.profile.consent_privacy,
+          consent_signer: response.data.profile.consent_signer || response.data.parent?.name || ''
+        }));
+      } else {
+        // Set default consent signer to parent name
+        setForm(prev => ({
+          ...prev,
+          consent_signer: response.data.parent?.name || ''
+        }));
+      }
+      
+      setPhotoPreview(response.data.student?.photo_url || '');
+    } catch (error) {
+      console.error('Error fetching form data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    setForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type and size
+    if (!file.type.startsWith('image/')) {
+      alert('JPG/PNG 파일만 업로드 가능합니다');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      alert('파일 크기는 5MB 이하여야 합니다');
+      return;
+    }
+    
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const uploadPhoto = async () => {
+    if (!photoFile) return null;
+    
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', photoFile);
+      
+      const response = await axios.post(`${API}/parent/students/${studentId}/photo`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      return response.data.photo_url;
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('사진 업로드에 실패했습니다');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const searchAddress = async () => {
+    if (!addressSearchQuery.trim()) return;
+    
+    try {
+      const response = await axios.get(`${API}/parent/address/search?query=${encodeURIComponent(addressSearchQuery)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setAddressResults(response.data.addresses || []);
+    } catch (error) {
+      console.error('Error searching address:', error);
+    }
+  };
+
+  const selectAddress = (address) => {
+    handleInputChange('postal_code', address.postal_code);
+    handleInputChange('address1', address.road_address || address.address_name);
+    setShowAddressSearch(false);
+    setAddressResults([]);
+    setAddressSearchQuery('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!form.address1) {
+      alert('주소(기본)는 필수입니다');
+      return;
+    }
+    if (!form.start_date) {
+      alert('등원 시작일은 필수입니다');
+      return;
+    }
+    if (!form.consent_privacy) {
+      alert('개인정보 수집·이용 동의는 필수입니다');
+      return;
+    }
+    if (form.use_shuttle && (!form.pickup_spot || !form.dropoff_spot)) {
+      alert('차량 이용 시 승차/하차 지점은 필수입니다');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Upload photo first if new photo selected
+      if (photoFile) {
+        await uploadPhoto();
+      }
+      
+      // Submit form data
+      await axios.post(`${API}/parent/enroll-form`, {
+        student_id: studentId,
+        ...form
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      alert('입학 등록 폼이 성공적으로 제출되었습니다');
+      window.location.href = '/parent/dashboard';
+      
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('제출 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !data) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">폼 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const calculateAge = (birthdate) => {
+    if (!birthdate) return null;
+    try {
+      const birth = new Date(birthdate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    } catch {
+      return null;
+    }
+  };
+
+  const age = calculateAge(data.student?.birthdate);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="max-w-7xl mx-auto px-4 py-24">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <FileText className="w-10 h-10 text-purple-600" />
+          </div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+            입학 등록 폼
+          </h1>
+          <p className="text-xl text-gray-600">
+            아래 정보를 입력하여 입학 등록을 완료해주세요
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Form */}
+          <div className="lg:col-span-2">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Address Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <MapPin className="w-5 h-5 mr-2" />
+                    주소 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="postal_code">우편번호</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="postal_code"
+                          value={form.postal_code}
+                          onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                          placeholder="우편번호"
+                          readOnly
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowAddressSearch(true)}
+                        >
+                          검색
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="address1">주소 (기본) *</Label>
+                    <Input
+                      id="address1"
+                      value={form.address1}
+                      onChange={(e) => handleInputChange('address1', e.target.value)}
+                      placeholder="기본 주소를 입력하세요"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="address2">상세 주소</Label>
+                    <Input
+                      id="address2"
+                      value={form.address2}
+                      onChange={(e) => handleInputChange('address2', e.target.value)}
+                      placeholder="상세 주소를 입력하세요"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Transportation Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <CreditCard className="w-5 h-5 mr-2" />
+                    교통 수단
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="use_shuttle"
+                      checked={form.use_shuttle}
+                      onCheckedChange={(checked) => handleInputChange('use_shuttle', checked)}
+                    />
+                    <Label htmlFor="use_shuttle">차량 이용</Label>
+                  </div>
+
+                  {form.use_shuttle && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="pickup_spot">승차 지점 *</Label>
+                        <Input
+                          id="pickup_spot"
+                          value={form.pickup_spot}
+                          onChange={(e) => handleInputChange('pickup_spot', e.target.value)}
+                          placeholder="승차 지점을 입력하세요"
+                          required={form.use_shuttle}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="dropoff_spot">하차 지점 *</Label>
+                        <Input
+                          id="dropoff_spot"
+                          value={form.dropoff_spot}
+                          onChange={(e) => handleInputChange('dropoff_spot', e.target.value)}
+                          placeholder="하차 지점을 입력하세요"
+                          required={form.use_shuttle}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Start Date Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    등원 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <Label htmlFor="start_date">등원 시작일 *</Label>
+                    <Input
+                      id="start_date"
+                      type="date"
+                      value={form.start_date}
+                      onChange={(e) => handleInputChange('start_date', e.target.value)}
+                      required
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Photo Upload Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <ImageIcon className="w-5 h-5 mr-2" />
+                    학생 사진 업로드
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-4">
+                    <img
+                      src={photoPreview || '/placeholder-avatar.png'}
+                      alt="학생 사진"
+                      className="w-20 h-20 rounded-full object-cover border"
+                    />
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        onChange={handlePhotoSelect}
+                        className="mb-2"
+                      />
+                      <p className="text-xs text-gray-500">
+                        JPG/PNG, 5MB 이하, 정사각형 권장
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Consent Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Shield className="w-5 h-5 mr-2" />
+                    개인정보 수집·이용 동의
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-gray-50 rounded-lg text-sm">
+                    <p className="font-medium mb-2">개인정보 수집·이용 동의서</p>
+                    <p className="text-gray-600 mb-2">
+                      프라게 EDU는 입학 등록 및 학사 관리를 위해 개인정보를 수집·이용합니다.
+                    </p>
+                    <ul className="text-gray-600 text-xs space-y-1">
+                      <li>• 수집 항목: 학생 정보, 학부모 연락처, 주소, 사진 등</li>
+                      <li>• 이용 목적: 입학 관리, 학사 관리, 비상연락</li>
+                      <li>• 보유 기간: 졸업 후 5년</li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="consent_privacy"
+                        checked={form.consent_privacy}
+                        onCheckedChange={(checked) => handleInputChange('consent_privacy', checked)}
+                        required
+                      />
+                      <Label htmlFor="consent_privacy">
+                        개인정보 수집·이용에 동의합니다 *
+                      </Label>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="consent_signer">동의자 성명</Label>
+                      <Input
+                        id="consent_signer"
+                        value={form.consent_signer}
+                        onChange={(e) => handleInputChange('consent_signer', e.target.value)}
+                        placeholder="동의자 성명"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Submit Button */}
+              <div className="text-center">
+                <Button
+                  type="submit"
+                  disabled={loading || uploading}
+                  className="bg-purple-600 hover:bg-purple-700 px-8 py-3 text-lg"
+                >
+                  {loading ? '제출 중...' : '입학 등록 제출'}
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Student Info Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">학생 정보</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-center">
+                  <img
+                    src={photoPreview || '/placeholder-avatar.png'}
+                    alt="학생 사진"
+                    className="w-16 h-16 rounded-full object-cover border mx-auto mb-3"
+                  />
+                  <h3 className="font-semibold text-lg">{data.student?.name}</h3>
+                  {age && <p className="text-gray-600">{age}세</p>}
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">과정:</span>
+                    <span>{data.student?.branch}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">프로그램:</span>
+                    <span>{data.student?.program_subtype}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Parent Info Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">학부모 정보</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">이름:</span>
+                  <span>{data.parent?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">연락처:</span>
+                  <span>{data.parent?.phone}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Help Card */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-6">
+                <h4 className="font-semibold text-blue-900 mb-3">도움이 필요하시나요?</h4>
+                <p className="text-blue-700 text-sm mb-4">
+                  입학 등록 관련 문의사항이 있으시면 언제든지 연락주세요.
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center space-x-2 text-blue-700">
+                    <Phone className="w-4 h-4" />
+                    <span>053-754-0577</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-blue-700">
+                    <Mail className="w-4 h-4" />
+                    <span>frage0577@gmail.com</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Address Search Modal */}
+      {showAddressSearch && (
+        <Dialog open={showAddressSearch} onOpenChange={setShowAddressSearch}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>주소 검색</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex space-x-2">
+                <Input
+                  value={addressSearchQuery}
+                  onChange={(e) => setAddressSearchQuery(e.target.value)}
+                  placeholder="도로명 또는 지번 주소를 입력하세요"
+                  onKeyPress={(e) => e.key === 'Enter' && searchAddress()}
+                />
+                <Button onClick={searchAddress}>
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {addressResults.map((address, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+                    onClick={() => selectAddress(address)}
+                  >
+                    <div className="font-medium">{address.road_address || address.address_name}</div>
+                    <div className="text-sm text-gray-600">
+                      우편번호: {address.postal_code}
+                    </div>
+                    {address.building_name && (
+                      <div className="text-sm text-gray-500">{address.building_name}</div>
+                    )}
+                  </div>
+                ))}
+                
+                {addressResults.length === 0 && addressSearchQuery && (
+                  <p className="text-center text-gray-500 py-4">
+                    검색 결과가 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <Footer />
+    </div>
+  );
+};
+
 // Main App Component
 function App() {
   const { user, token, login, logout } = useAuth();
