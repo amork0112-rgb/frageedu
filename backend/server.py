@@ -929,10 +929,18 @@ async def get_members(
         
         members = []
         for user in users:
+            # Clean user data
+            if '_id' in user:
+                del user['_id']
+                
             # Get parent info
             parent = await db.parents.find_one({"user_id": user["id"]})
             if not parent:
                 continue
+                
+            # Clean parent data
+            if '_id' in parent:
+                del parent['_id']
                 
             # Apply branch filter
             if branch and parent.get("branch") != branch:
@@ -940,6 +948,11 @@ async def get_members(
                 
             # Get students
             students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+            
+            # Clean student data
+            for student in students:
+                if '_id' in student:
+                    del student['_id']
             
             # Get additional search match for students
             if query:
