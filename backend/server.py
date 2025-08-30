@@ -4933,11 +4933,12 @@ async def create_admin(admin_data: AdminCreate):
     if existing_admin:
         raise HTTPException(status_code=400, detail="Admin already exists")
     
-    # Create admin
+    # Create admin with admin role for setup purposes
     admin = Admin(
         username=admin_data.username,
         email=admin_data.email,
-        password_hash=hash_password(admin_data.password)
+        password_hash=hash_password(admin_data.password),
+        role="admin"  # Set to admin role for setup
     )
     
     # Insert admin
