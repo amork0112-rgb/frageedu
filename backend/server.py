@@ -3276,8 +3276,9 @@ async def assign_student_to_class(
         assignment_dict['created_at'] = assignment_dict['created_at'].isoformat()
         assignment_dict['effective_from'] = assignment_dict['effective_from'].isoformat()
         
-        # Convert homeroom_teacher to teacher_name for database compatibility
+        # Convert field names for database compatibility
         assignment_dict['teacher_name'] = assignment_dict.pop('homeroom_teacher')
+        assignment_dict['start_date'] = assignment_dict.pop('effective_from')
         
         await db.class_placements.insert_one(assignment_dict)
         
