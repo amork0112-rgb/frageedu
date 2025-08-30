@@ -655,16 +655,23 @@ class FrageEDUAPITester:
         return success
 
     def test_create_sample_student_data(self):
-        """Create sample student data for testing (if needed)"""
+        """Create sample student data using NEW /admin/create-sample-data endpoint"""
         if not self.admin_token:
             print("❌ No admin token available for creating test data")
             return False
         
-        print("🔧 This test would create sample student data, but we'll skip it")
-        print("   Reason: We should test with existing data or report the empty state")
-        print("   The main issue is likely that no student data exists in the database")
+        success, response = self.run_test("Create Sample Student Data (NEW endpoint)", "POST", "admin/create-sample-data", 200)
+        if success:
+            print("✅ Sample student data created successfully")
+            if response:
+                created_parents = response.get('created_parents', 0)
+                created_students = response.get('created_students', 0)
+                print(f"   Created {created_parents} parents and {created_students} students")
+                print(f"   Message: {response.get('message', 'No message')}")
+        else:
+            print("❌ Failed to create sample student data")
         
-        return True
+        return success
 
     def test_branch_filtering_issue(self):
         """Test the specific branch filtering issue"""
