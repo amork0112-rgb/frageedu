@@ -2721,7 +2721,7 @@ async def init_rbac_system(current_admin: AdminResponse = Depends(get_current_ad
     """Initialize RBAC system with default permissions and roles"""
     try:
         # Allow admin or super_admin to initialize RBAC
-        if current_admin.role not in ["admin", "super_admin"]:
+        if current_admin.role not in ["admin", "super_admin", "kinder_admin", "junior_admin", "middle_admin"]:
             raise HTTPException(status_code=403, detail="Only admin or super admin can initialize RBAC system")
         
         result = await initialize_rbac_system()
