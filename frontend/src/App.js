@@ -1500,7 +1500,11 @@ function App() {
           <Route path="/admissions" element={<AdmissionsPortal />} />
           <Route path="/signup" element={<Signup onSignup={handleSignup} />} />
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
-
+          
+          {/* Exam Reservation System */}
+          <Route path="/exam/reserve" element={<ExamReservationForm />} />
+          <Route path="/exam/confirmation" element={<ExamConfirmation />} />
+          <Route path="/exam/guide" element={<ExamGuide />} />
           
           {/* Admission Portal Pages - keeping existing functionality */}
           <Route path="/dashboard" element={
