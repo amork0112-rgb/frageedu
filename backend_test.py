@@ -102,13 +102,23 @@ class FrageEDUAPITester:
 
     def test_signup_duplicate_email(self):
         """Test signup with duplicate email"""
+        timestamp = datetime.now().strftime('%H%M%S')
         signup_data = {
-            "email": "test@frage.edu",  # Using same email as before
+            "email": f"duplicate{timestamp}@frage.edu",
             "phone": "010-1234-5678",
+            "name": f"중복테스트{timestamp}",
+            "student_name": f"중복학생{timestamp}",
             "password": "TestPassword123!",
-            "terms_accepted": True
+            "terms_accepted": True,
+            "branch": "junior"
         }
         
+        # Create user first
+        success, response = self.run_test("Create User for Duplicate Test", "POST", "signup", 200, signup_data)
+        if not success:
+            return False
+        
+        # Try to create duplicate
         success, response = self.run_test("Duplicate Email Signup", "POST", "signup", 400, signup_data)
         return success
 
@@ -118,8 +128,11 @@ class FrageEDUAPITester:
         signup_data = {
             "email": f"noterms{timestamp}@frage.edu",
             "phone": "010-1234-5678",
+            "name": f"약관거부{timestamp}",
+            "student_name": f"약관거부학생{timestamp}",
             "password": "TestPassword123!",
-            "terms_accepted": False
+            "terms_accepted": False,
+            "branch": "kinder"
         }
         
         success, response = self.run_test("Signup No Terms", "POST", "signup", 400, signup_data)
