@@ -4598,7 +4598,7 @@ function App() {
           {/* Admission Portal Pages - keeping existing functionality */}
           <Route path="/dashboard" element={
             <TokenAuthWrapper>
-              <div>Dashboard (existing functionality preserved)</div>
+              <WelcomeAdmissionGuide />
             </TokenAuthWrapper>
           } />
           <Route path="/consent" element={
