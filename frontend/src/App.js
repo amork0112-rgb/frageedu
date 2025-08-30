@@ -121,6 +121,7 @@ const Header = () => {
               <a href="/news" className="text-gray-700 hover:text-purple-600 transition-colors">News</a>
               <div className="flex flex-col space-y-2 pt-3 border-t">
                 <Button variant="ghost" onClick={() => window.location.href = '/login'}>Login</Button>
+                <Button variant="ghost" onClick={() => window.location.href = '/admin/login'}>Admin</Button>
                 <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => window.location.href = '/signup'}>Sign Up</Button>
               </div>
             </nav>
