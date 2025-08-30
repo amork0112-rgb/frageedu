@@ -221,15 +221,15 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 2
+  test_sequence: 3
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Debug /admin/students API returning null/empty data"
-    - "Create sample student data for testing"
-    - "Fix RBAC branch filtering logic bug"
-    - "Fix RBAC initialization for regular admin roles"
+    - "Setup default admin accounts via /admin/setup-default-admins endpoint"
+    - "Test admin creation with roles via /admin/create-with-role endpoint"
+    - "Verify login credentials for each new admin account"
+    - "Test role-based access and RBAC filtering for each admin"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -241,3 +241,5 @@ agent_communication:
     message: "INVESTIGATION COMPLETE: Found the root cause of the /admin/students API issue. The problem is NOT that the API returns null/empty data - the API is working and returning student data correctly. The issues are: 1) Wrong endpoint name - there is no /admin/students endpoint, only /admin/student-management. 2) MAJOR BUG in branch filtering logic - when admin requests a branch they don't have access to (e.g., kinder_admin requesting junior branch), the API incorrectly returns students from their allowed branches instead of returning empty results. 3) RBAC initialization requires super_admin role but all created admins default to kinder_admin. The API itself works fine and returns proper student data with correct RBAC permissions."
   - agent: "testing"
     message: "COMPREHENSIVE TESTING COMPLETED - ALL 4 FIXES VERIFIED: ✅ NEW /admin/students endpoint exists and works (200 response, not 404). ✅ Branch filtering bug FIXED - unauthorized branch requests return empty results correctly. ✅ RBAC initialization works with regular admin roles (kinder_admin/junior_admin/middle_admin). ✅ Sample data creation endpoint works correctly. ✅ Both /admin/students and /admin/student-management return identical responses. Fixed critical StudentManagement model validation error. All priority issues resolved successfully."
+  - agent: "testing"
+    message: "ADMIN ACCOUNT CREATION TESTING COMPLETED SUCCESSFULLY: ✅ /admin/setup-default-admins endpoint creates 4 default admin accounts (super_admin, kinder_admin, junior_admin, middle_admin) with correct credentials. ✅ All new admin accounts can login successfully with designated passwords (Super123!, Kinder123!, Junior123!, Middle123!). ✅ /admin/create-with-role endpoint allows super_admin to create custom admin accounts with specific roles. ✅ RBAC filtering verified - each admin role sees only authorized branches and students. ✅ Branch filtering works correctly - unauthorized branch requests return 0 students. ✅ Audit logging implemented for all admin creation actions. All priority admin account creation functionality is working correctly."
