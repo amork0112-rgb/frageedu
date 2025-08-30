@@ -12,6 +12,20 @@ import { Textarea } from "./components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { Separator } from "./components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./components/ui/dialog";
+import EntrancePage from "./pages/EntrancePage";
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/entrance/step" element={<EntrancePage />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
 import { 
   CheckCircle, 
   Clock, 
