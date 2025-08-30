@@ -3085,6 +3085,201 @@ async def confirm_password_reset(request: PasswordResetConfirm):
             raise e
         raise HTTPException(status_code=500, detail="비밀번호 변경 처리 중 오류가 발생했습니다.")
 
+# RBAC System Utility Functions
+async def initialize_rbac_system():
+    """Initialize Role-Based Access Control system with default permissions and roles"""
+    
+    # Default permissions
+    default_permissions = [
+        # Student Management
+        {"code": "can_view_student", "description": "학생 정보 조회", "category": "student"},
+        {"code": "can_edit_student", "description": "학생 정보 수정", "category": "student"},
+        {"code": "can_delete_student", "description": "학생 삭제", "category": "student"},
+        {"code": "can_create_student", "description": "학생 등록", "category": "student"},
+        
+        # Class Management
+        {"code": "can_view_class", "description": "반 정보 조회", "category": "class"},
+        {"code": "can_edit_class", "description": "반 배정/수정", "category": "class"},
+        {"code": "can_manage_attendance", "description": "출결 관리", "category": "class"},
+        
+        # Notice & Communication
+        {"code": "can_send_notice", "description": "공지사항 발송", "category": "notice"},
+        {"code": "can_send_sms", "description": "SMS 발송", "category": "notice"},
+        
+        # Payment Management  
+        {"code": "can_manage_payment", "description": "결제 관리", "category": "payment"},
+        {"code": "can_view_payment", "description": "결제 조회", "category": "payment"},
+        
+        # Exam Management
+        {"code": "can_view_exam", "description": "시험 조회", "category": "exam"},
+        {"code": "can_manage_exam", "description": "시험 관리", "category": "exam"},
+        
+        # System Administration
+        {"code": "can_manage_admins", "description": "관리자 계정 관리", "category": "system"},
+        {"code": "can_manage_permissions", "description": "권한 관리", "category": "system"},
+        {"code": "can_view_audit_log", "description": "감사 로그 조회", "category": "system"},
+    ]
+    
+    # Insert permissions if not exists
+    for perm in default_permissions:
+        existing = await db.permissions.find_one({"code": perm["code"]})
+        if not existing:
+            permission = Permission(**perm)
+            perm_dict = permission.dict()
+            perm_dict['created_at'] = perm_dict['created_at'].isoformat()
+            await db.permissions.insert_one(perm_dict)
+    
+    # Default role permissions
+    role_permissions = {
+        "super_admin": [
+            "can_view_student", "can_edit_student", "can_delete_student", "can_create_student",
+            "can_view_class", "can_edit_class", "can_manage_attendance",
+            "can_send_notice", "can_send_sms",
+            "can_manage_payment", "can_view_payment",
+            "can_view_exam", "can_manage_exam",
+            "can_manage_admins", "can_manage_permissions", "can_view_audit_log"
+        ],
+        "kinder_admin": ["can_view_student", "can_view_class", "can_view_payment"],
+        "junior_admin": ["can_view_student", "can_view_class", "can_view_payment"],
+        "middle_admin": ["can_view_student", "can_view_class", "can_view_payment"]
+    }
+    
+    # Insert role permissions
+    for role, perms in role_permissions.items():
+        for perm_code in perms:
+            existing = await db.role_permissions.find_one({"role": role, "permission_code": perm_code})
+            if not existing:
+                role_perm = RolePermission(
+                    role=role,
+                    permission_code=perm_code,
+                    default_value=True
+                )
+                role_perm_dict = role_perm.dict()
+                role_perm_dict['created_at'] = role_perm_dict['created_at'].isoformat()
+                await db.role_permissions.insert_one(role_perm_dict)
+    
+    return "RBAC system initialized successfully"
+
+async def get_allowed_branches(admin_user_id: str) -> List[str]:
+    """Get branches that an admin user is allowed to access"""
+    branches = await db.admin_user_allowed_branches.find({"admin_user_id": admin_user_id}).to_list(10)
+    return [branch["branch"] for branch in branches]
+
+async def has_permission(admin_user_id: str, admin_role: str, permission_code: str) -> bool:
+    """Check if admin user has specific permission"""
+    
+    # Check user-specific permission override first
+    user_override = await db.admin_user_permissions.find_one({
+        "admin_user_id": admin_user_id,
+        "permission_code": permission_code
+    })
+    
+    if user_override:
+        return user_override["value"]
+    
+    # Check role default permission
+    role_permission = await db.role_permissions.find_one({
+        "role": admin_role,
+        "permission_code": permission_code
+    })
+    
+    return role_permission["default_value"] if role_permission else False
+
+async def get_user_permissions(admin_user_id: str, admin_role: str) -> List[PermissionResponse]:
+    """Get all permissions for an admin user"""
+    
+    # Get all permissions
+    all_permissions = await db.permissions.find({}).to_list(100)
+    
+    result = []
+    for perm in all_permissions:
+        has_perm = await has_permission(admin_user_id, admin_role, perm["code"])
+        result.append(PermissionResponse(
+            code=perm["code"],
+            description=perm["description"],
+            category=perm["category"],
+            has_permission=has_perm
+        ))
+    
+    return result
+
+async def set_admin_branches(admin_user_id: str, branches: List[str], granted_by: str):
+    """Set allowed branches for an admin user"""
+    
+    # Remove existing branches
+    await db.admin_user_allowed_branches.delete_many({"admin_user_id": admin_user_id})
+    
+    # Add new branches
+    for branch in branches:
+        branch_record = AdminUserAllowedBranch(
+            admin_user_id=admin_user_id,
+            branch=branch
+        )
+        branch_dict = branch_record.dict()
+        branch_dict['created_at'] = branch_dict['created_at'].isoformat()
+        await db.admin_user_allowed_branches.insert_one(branch_dict)
+    
+    # Log the change
+    await log_audit(
+        granted_by,
+        "SET_ADMIN_BRANCHES",
+        "Admin",
+        admin_user_id,
+        {"branches": branches}
+    )
+
+async def set_admin_permission(admin_user_id: str, permission_code: str, value: bool, granted_by: str):
+    """Set specific permission for an admin user"""
+    
+    # Remove existing permission override
+    await db.admin_user_permissions.delete_many({
+        "admin_user_id": admin_user_id,
+        "permission_code": permission_code
+    })
+    
+    # Add new permission override
+    perm_record = AdminUserPermission(
+        admin_user_id=admin_user_id,
+        permission_code=permission_code,
+        value=value,
+        granted_by=granted_by
+    )
+    perm_dict = perm_record.dict()
+    perm_dict['created_at'] = perm_dict['created_at'].isoformat()
+    await db.admin_user_permissions.insert_one(perm_dict)
+    
+    # Log the change
+    await log_audit(
+        granted_by,
+        f"SET_PERMISSION:{permission_code}",
+        "Admin",
+        admin_user_id,
+        {"permission": permission_code, "value": value}
+    )
+
+async def filter_students_by_admin_access(admin_user_id: str, admin_role: str) -> Dict[str, Any]:
+    """Get students filtered by admin's allowed branches"""
+    
+    # Super admin sees all
+    if admin_role == "super_admin":
+        allowed_branches = ["kinder", "junior", "middle", "kinder_single"]
+    else:
+        allowed_branches = await get_allowed_branches(admin_user_id)
+        
+        # If no branches set, use role defaults
+        if not allowed_branches:
+            if admin_role == "kinder_admin":
+                allowed_branches = ["kinder"]
+            elif admin_role == "junior_admin":
+                allowed_branches = ["junior", "kinder_single", "middle"]  # As requested
+            elif admin_role == "middle_admin":
+                allowed_branches = ["middle"]
+    
+    return {
+        "allowed_branches": allowed_branches,
+        "branch_filter": {"$in": allowed_branches} if allowed_branches else {}
+    }
+
 async def send_alimtalk_notification(student_id: str, template_type: str, data: Dict = None):
     """Send AlimTalk notification (placeholder for integration)"""
     # TODO: Integrate with Solapi AlimTalk API
