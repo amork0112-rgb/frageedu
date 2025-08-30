@@ -743,11 +743,13 @@ def main():
         ("Admin Login", tester.test_admin_login),
         
         # RBAC and Student Management Tests (PRIORITY)
+        ("Create Super Admin", tester.test_create_super_admin),
         ("Initialize RBAC System", tester.test_init_rbac_system),
         ("Test /admin/students Endpoint", tester.test_admin_students_endpoint),
         ("Test Student Management Endpoint", tester.test_admin_student_management_endpoint),
         ("Check Database Student Data", tester.test_database_student_data),
         ("Check RBAC Permissions", tester.test_rbac_permissions_check),
+        ("Test Branch Filtering Issue", tester.test_branch_filtering_issue),
         ("Create Sample Student Data", tester.test_create_sample_student_data),
         
         # Member Management Tests
