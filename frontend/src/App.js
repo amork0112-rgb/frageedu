@@ -1805,6 +1805,543 @@ const InternalAdmissionsPortal = () => {
   );
 };
 
+// Admin Login Component
+const AdminLogin = () => {
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await axios.post(`${API}/admin/login`, formData);
+      localStorage.setItem('adminToken', response.data.token);
+      window.location.href = '/admin/dashboard';
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-gray-900">Admin Login</CardTitle>
+          <CardDescription>관리자 포털에 로그인하세요</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">사용자명</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="admin"
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">비밀번호</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="비밀번호를 입력하세요"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                required
+              />
+            </div>
+            
+            {error && (
+              <div className="text-red-600 text-sm">{error}</div>
+            )}
+            
+            <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={loading}>
+              {loading ? "로그인 중..." : "로그인"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// Admin Dashboard Component
+const AdminDashboard = () => {
+  const [adminToken] = useState(localStorage.getItem('adminToken'));
+  const [stats, setStats] = useState({ totalNews: 0, publishedNews: 0, draftNews: 0 });
+
+  useEffect(() => {
+    if (!adminToken) {
+      window.location.href = '/admin/login';
+      return;
+    }
+    fetchStats();
+  }, [adminToken]);
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/news`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      const articles = response.data.articles;
+      setStats({
+        totalNews: articles.length,
+        publishedNews: articles.filter(a => a.published).length,
+        draftNews: articles.filter(a => !a.published).length
+      });
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    window.location.href = '/';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="max-w-7xl mx-auto px-4 py-24">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">관리자 대시보드</h1>
+            <p className="text-gray-600">Frage EDU 콘텐츠 관리</p>
+          </div>
+          <div className="flex space-x-4">
+            <Button onClick={() => window.location.href = '/admin/news'} className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="w-4 h-4 mr-2" />
+              뉴스 관리
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              로그아웃
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                  <BarChart3 className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalNews}</p>
+                  <p className="text-gray-600">전체 뉴스</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.publishedNews}</p>
+                  <p className="text-gray-600">게시된 뉴스</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                  <Clock className="w-6 h-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.draftNews}</p>
+                  <p className="text-gray-600">임시 저장</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>빠른 작업</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button variant="outline" onClick={() => window.location.href = '/admin/news/new'} className="h-20 flex flex-col">
+                <Plus className="w-8 h-8 mb-2" />
+                새 뉴스 작성
+              </Button>
+              <Button variant="outline" onClick={() => window.location.href = '/admin/news'} className="h-20 flex flex-col">
+                <FileText className="w-8 h-8 mb-2" />
+                뉴스 목록
+              </Button>
+              <Button variant="outline" onClick={() => window.location.href = '/news'} className="h-20 flex flex-col">
+                <Eye className="w-8 h-8 mb-2" />
+                사이트 보기
+              </Button>
+              <Button variant="outline" className="h-20 flex flex-col">
+                <Settings className="w-8 h-8 mb-2" />
+                설정
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Admin News Management Component
+const AdminNewsManagement = () => {
+  const [adminToken] = useState(localStorage.getItem('adminToken'));
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState('전체');
+
+  const categories = ['전체', '개강소식', '공지사항', '뉴스'];
+
+  useEffect(() => {
+    if (!adminToken) {
+      window.location.href = '/admin/login';
+      return;
+    }
+    fetchArticles();
+  }, [adminToken, activeCategory]);
+
+  const fetchArticles = async () => {
+    try {
+      const params = activeCategory !== '전체' ? `?category=${activeCategory}` : '';
+      const response = await axios.get(`${API}/admin/news${params}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      setArticles(response.data.articles);
+    } catch (error) {
+      console.error('Failed to fetch articles:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (articleId) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+
+    try {
+      await axios.delete(`${API}/admin/news/${articleId}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      fetchArticles();
+    } catch (error) {
+      console.error('Failed to delete article:', error);
+    }
+  };
+
+  const getCategoryColor = (category) => {
+    switch(category) {
+      case '개강소식': return 'bg-blue-100 text-blue-800';
+      case '공지사항': return 'bg-green-100 text-green-800';
+      case '뉴스': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="max-w-7xl mx-auto px-4 py-24">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">뉴스 관리</h1>
+            <p className="text-gray-600">뉴스 기사를 작성하고 관리하세요</p>
+          </div>
+          <div className="flex space-x-4">
+            <Button onClick={() => window.location.href = '/admin/news/new'} className="bg-purple-600 hover:bg-purple-700">
+              <Plus className="w-4 h-4 mr-2" />
+              새 뉴스 작성
+            </Button>
+            <Button variant="outline" onClick={() => window.location.href = '/admin/dashboard'}>
+              대시보드
+            </Button>
+          </div>
+        </div>
+
+        {/* Category Filter */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          {categories.map((category) => (
+            <Button
+              key={category}
+              onClick={() => setActiveCategory(category)}
+              variant={activeCategory === category ? "default" : "outline"}
+              className={activeCategory === category 
+                ? "bg-purple-600 hover:bg-purple-700" 
+                : "hover:bg-purple-50"
+              }
+            >
+              {category}
+            </Button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {articles.map((article) => (
+              <Card key={article.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <Badge className={getCategoryColor(article.category)}>
+                          {article.category}
+                        </Badge>
+                        {article.featured && (
+                          <Badge className="bg-yellow-100 text-yellow-800">주요 소식</Badge>
+                        )}
+                        {!article.published && (
+                          <Badge variant="secondary">임시 저장</Badge>
+                        )}
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{article.title}</h3>
+                      <p className="text-gray-600 mb-3 line-clamp-2">{article.content}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(article.created_at).toLocaleDateString('ko-KR')} 작성
+                      </p>
+                    </div>
+                    <div className="flex space-x-2 ml-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.location.href = `/admin/news/edit/${article.id}`}
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDelete(article.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {articles.length === 0 && (
+              <div className="text-center py-12">
+                <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">뉴스가 없습니다</h3>
+                <p className="text-gray-600 mb-6">새로운 뉴스를 작성해보세요.</p>
+                <Button onClick={() => window.location.href = '/admin/news/new'}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  새 뉴스 작성
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Admin News Editor Component
+const AdminNewsEditor = () => {
+  const [adminToken] = useState(localStorage.getItem('adminToken'));
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    category: '공지사항',
+    image_url: '',
+    featured: false,
+    published: true
+  });
+  const [loading, setLoading] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [articleId, setArticleId] = useState(null);
+
+  useEffect(() => {
+    if (!adminToken) {
+      window.location.href = '/admin/login';
+      return;
+    }
+
+    // Check if editing existing article
+    const pathParts = window.location.pathname.split('/');
+    if (pathParts[3] === 'edit' && pathParts[4]) {
+      setIsEdit(true);
+      setArticleId(pathParts[4]);
+      fetchArticle(pathParts[4]);
+    }
+  }, [adminToken]);
+
+  const fetchArticle = async (id) => {
+    try {
+      const response = await axios.get(`${API}/news/${id}`);
+      setFormData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch article:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (isEdit) {
+        await axios.put(`${API}/admin/news/${articleId}`, formData, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+      } else {
+        await axios.post(`${API}/admin/news`, formData, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+      }
+      
+      window.location.href = '/admin/news';
+    } catch (error) {
+      console.error('Failed to save article:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="max-w-4xl mx-auto px-4 py-24">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {isEdit ? '뉴스 수정' : '새 뉴스 작성'}
+          </h1>
+          <p className="text-gray-600">뉴스 기사를 작성하고 게시하세요</p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>기본 정보</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="title">제목</Label>
+                  <Input
+                    id="title"
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    placeholder="뉴스 제목을 입력하세요"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="category">카테고리</Label>
+                  <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="개강소식">개강소식</SelectItem>
+                      <SelectItem value="공지사항">공지사항</SelectItem>
+                      <SelectItem value="뉴스">뉴스</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="image_url">이미지 URL</Label>
+                  <Input
+                    id="image_url"
+                    type="url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+
+                <div className="flex space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="featured"
+                      checked={formData.featured}
+                      onCheckedChange={(checked) => setFormData({...formData, featured: checked})}
+                    />
+                    <Label htmlFor="featured">주요 소식으로 설정</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="published"
+                      checked={formData.published}
+                      onCheckedChange={(checked) => setFormData({...formData, published: checked})}
+                    />
+                    <Label htmlFor="published">즉시 게시</Label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>내용</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={formData.content}
+                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  placeholder="뉴스 내용을 입력하세요..."
+                  rows={10}
+                  required
+                />
+              </CardContent>
+            </Card>
+
+            <div className="flex space-x-4">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => window.location.href = '/admin/news'}
+                className="flex-1"
+              >
+                취소
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="flex-1 bg-purple-600 hover:bg-purple-700"
+              >
+                {loading ? "저장 중..." : (isEdit ? "수정하기" : "게시하기")}
+                <Save className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // New Public Admissions Page
 const AdmissionsPage = () => {
   const programsData = [
