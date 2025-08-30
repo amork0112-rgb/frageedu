@@ -128,6 +128,7 @@ class UserCreate(BaseModel):
     phone: str
     name: str  # parent name
     student_name: str
+    student_birthdate: str  # Added birthdate field
     password: str
     terms_accepted: bool
     branch: str  # kinder, junior, middle
