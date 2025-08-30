@@ -2072,9 +2072,9 @@ const AdminDashboard = () => {
 // Parent Dashboard Component
 const ParentDashboard = () => {
   const { user, token } = useAuth();
-  const [studentInfo, setStudentInfo] = useState(null);
-  const [examHistory, setExamHistory] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!token) {
@@ -2086,14 +2086,13 @@ const ParentDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch student information and exam history
       const response = await axios.get(`${API}/parent/dashboard`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      setStudentInfo(response.data.student);
-      setExamHistory(response.data.exams || []);
+      setDashboardData(response.data);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      setError('대시보드 데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -2102,6 +2101,28 @@ const ParentDashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     window.location.href = '/';
+  };
+
+  const getEnrollmentStatusText = (status) => {
+    switch (status) {
+      case 'new': return '신규 회원';
+      case 'test_scheduled': return '시험 예약됨';
+      case 'test_taken': return '시험 완료';
+      case 'enrolled': return '등록 완료';
+      case 'active': return '수강 중';
+      default: return '상태 확인 필요';
+    }
+  };
+
+  const getEnrollmentStatusColor = (status) => {
+    switch (status) {
+      case 'new': return 'bg-gray-100 text-gray-800';
+      case 'test_scheduled': return 'bg-blue-100 text-blue-800';
+      case 'test_taken': return 'bg-yellow-100 text-yellow-800';
+      case 'enrolled': return 'bg-green-100 text-green-800';
+      case 'active': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   if (loading) {
@@ -2115,19 +2136,46 @@ const ParentDashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 py-24">
+          <Card className="text-center">
+            <CardContent className="pt-6">
+              <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">오류 발생</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()} className="bg-purple-600 hover:bg-purple-700">
+                다시 시도
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-7xl mx-auto px-4 py-24">
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">학부모 대시보드</h1>
-            <p className="text-gray-600">안녕하세요, {user?.parent_name || user?.email}님</p>
+            <div className="flex items-center space-x-4 mt-2">
+              <p className="text-gray-600">안녕하세요, {dashboardData?.parent_info?.name}님</p>
+              <Badge className={getEnrollmentStatusColor(dashboardData?.enrollment_status)}>
+                {getEnrollmentStatusText(dashboardData?.enrollment_status)}
+              </Badge>
+            </div>
           </div>
           <div className="flex space-x-4">
-            <Button onClick={() => window.location.href = '/exam/reserve'} className="bg-purple-600 hover:bg-purple-700">
-              <Calendar className="w-4 h-4 mr-2" />
-              시험 예약
+            <Button onClick={() => window.location.href = '/programs'} variant="outline">
+              <BookOpen className="w-4 h-4 mr-2" />
+              프로그램 보기
             </Button>
             <Button variant="outline" onClick={handleLogout}>
               로그아웃
@@ -2136,9 +2184,11 @@ const ParentDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Student Information Card */}
-          <div className="lg:col-span-2">
-            <Card className="mb-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Student Information */}
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Users className="w-5 h-5 mr-2 text-purple-600" />
@@ -2146,92 +2196,225 @@ const ParentDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label className="text-gray-600">학생 이름</Label>
-                    <p className="text-lg font-medium">{user?.student_name || '미입력'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-gray-600">학부모 이름</Label>
-                    <p className="text-lg font-medium">{user?.parent_name || user?.email}</p>
-                  </div>
-                  <div>
-                    <Label className="text-gray-600">연락처</Label>
-                    <p className="text-lg font-medium">{user?.phone || '미입력'}</p>
-                  </div>
-                  <div>
-                    <Label className="text-gray-600">이메일</Label>
-                    <p className="text-lg font-medium">{user?.email}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Exam History */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BookmarkCheck className="w-5 h-5 mr-2 text-purple-600" />
-                  시험 기록
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {examHistory.length > 0 ? (
+                {dashboardData?.students?.length > 0 ? (
                   <div className="space-y-4">
-                    {examHistory.map((exam, index) => (
-                      <div key={index} className="border-l-4 border-purple-400 pl-4 py-2">
-                        <div className="flex justify-between items-start">
+                    {dashboardData.students.map((student, index) => (
+                      <div key={index} className="p-4 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <h4 className="font-semibold">{exam.type} 시험</h4>
-                            <p className="text-gray-600 text-sm">{exam.date}</p>
+                            <Label className="text-gray-600">학생 이름</Label>
+                            <p className="text-lg font-medium">{student.name}</p>
                           </div>
-                          <Badge className={exam.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                            {exam.status === 'completed' ? '완료' : '예정'}
-                          </Badge>
+                          <div>
+                            <Label className="text-gray-600">학년</Label>
+                            <p className="text-lg font-medium">{student.grade}학년</p>
+                          </div>
+                          <div>
+                            <Label className="text-gray-600">과정</Label>
+                            <Badge variant="outline">
+                              {dashboardData.parent_info.branch === 'kinder' ? '유치부' :
+                               dashboardData.parent_info.branch === 'junior' ? '초등부' : '중등부'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <BookmarkCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">아직 시험 기록이 없습니다.</p>
-                    <Button 
-                      onClick={() => window.location.href = '/exam/reserve'}
-                      className="mt-4 bg-purple-600 hover:bg-purple-700"
-                    >
-                      시험 예약하기
-                    </Button>
-                  </div>
+                  <p className="text-gray-500">등록된 학생 정보가 없습니다.</p>
                 )}
               </CardContent>
             </Card>
+
+            {/* Conditional Content Based on Enrollment Status */}
+            
+            {/* Test Schedule - for new users and scheduled tests */}
+            {(dashboardData?.enrollment_status === 'new' || dashboardData?.enrollment_status === 'test_scheduled') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="w-5 h-5 mr-2 text-blue-600" />
+                    시험 일정
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {dashboardData?.test_schedules?.length > 0 ? (
+                    <div className="space-y-4">
+                      {dashboardData.test_schedules.map((schedule, index) => (
+                        <div key={index} className="border-l-4 border-blue-400 pl-4 py-3 bg-blue-50 rounded-r-lg">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-semibold text-blue-900">{schedule.student_name}님의 {schedule.branch_type === 'junior' ? '초등부' : '중등부'} 입학시험</h4>
+                              <p className="text-blue-700 text-sm">
+                                일시: {new Date(schedule.scheduled_date).toLocaleDateString('ko-KR')}
+                              </p>
+                              <p className="text-blue-700 text-sm">장소: {schedule.location}</p>
+                            </div>
+                            <Badge className={
+                              schedule.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              schedule.status === 'requested' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
+                            }>
+                              {schedule.status === 'confirmed' ? '확정' : schedule.status === 'requested' ? '대기' : '취소'}
+                            </Badge>
+                          </div>
+                          {schedule.notes && (
+                            <p className="text-blue-600 text-sm">메모: {schedule.notes}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-4">예약된 시험이 없습니다.</p>
+                      <div className="space-y-2">
+                        <Button 
+                          onClick={() => window.location.href = '/exam/reserve?brchType=junior'}
+                          className="bg-green-600 hover:bg-green-700 mr-2"
+                        >
+                          초등부 시험 예약
+                        </Button>
+                        <Button 
+                          onClick={() => window.location.href = '/exam/reserve?brchType=middle'}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          중등부 시험 예약
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Test Results - for test_taken and enrolled status */}
+            {(dashboardData?.enrollment_status === 'test_taken' || dashboardData?.enrollment_status === 'enrolled') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Award className="w-5 h-5 mr-2 text-green-600" />
+                    시험 결과
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {dashboardData?.test_results?.length > 0 ? (
+                    <div className="space-y-4">
+                      {dashboardData.test_results.map((result, index) => (
+                        <div key={index} className="border-l-4 border-green-400 pl-4 py-3 bg-green-50 rounded-r-lg">
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-semibold text-green-900">{result.student_name}님의 시험 결과</h4>
+                              <div className="grid grid-cols-2 gap-4 mt-2">
+                                <div>
+                                  <p className="text-green-700 text-sm">점수: <span className="font-bold text-lg">{result.score}점</span></p>
+                                  <p className="text-green-700 text-sm">레벨: {result.level}</p>
+                                </div>
+                                <div>
+                                  <p className="text-green-700 text-sm">추천 반: {result.recommended_class}</p>
+                                </div>
+                              </div>
+                            </div>
+                            <Badge className={result.status === 'passed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                              {result.status === 'passed' ? '합격' : '불합격'}
+                            </Badge>
+                          </div>
+                          {result.feedback && (
+                            <div className="bg-white p-3 rounded border mt-3">
+                              <p className="text-gray-700 text-sm"><strong>피드백:</strong> {result.feedback}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">시험 결과가 아직 나오지 않았습니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Class Assignments - for enrolled status */}
+            {dashboardData?.enrollment_status === 'enrolled' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <BookOpen className="w-5 h-5 mr-2 text-purple-600" />
+                    수업 배정
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {dashboardData?.class_assignments?.length > 0 ? (
+                    <div className="space-y-4">
+                      {dashboardData.class_assignments.map((assignment, index) => (
+                        <div key={index} className="border-l-4 border-purple-400 pl-4 py-3 bg-purple-50 rounded-r-lg">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h4 className="font-semibold text-purple-900">{assignment.class_name}</h4>
+                              <p className="text-purple-700 text-sm">담당교사: {assignment.teacher_name}</p>
+                              <p className="text-purple-700 text-sm">수업 시간: {assignment.schedule}</p>
+                              <p className="text-purple-700 text-sm">교실: {assignment.classroom}</p>
+                            </div>
+                            <Badge className="bg-purple-100 text-purple-800">
+                              {assignment.status === 'active' ? '수강 중' : '완료'}
+                            </Badge>
+                          </div>
+                          
+                          {assignment.materials && assignment.materials.length > 0 && (
+                            <div className="bg-white p-3 rounded border mt-3">
+                              <h5 className="font-medium text-gray-900 mb-2">수업 자료:</h5>
+                              <ul className="list-disc list-inside space-y-1">
+                                {assignment.materials.map((material, idx) => (
+                                  <li key={idx} className="text-gray-700 text-sm">{material}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500">배정된 수업이 없습니다.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Quick Actions Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-6">
+            {/* Quick Actions */}
             <Card>
               <CardHeader>
                 <CardTitle>빠른 메뉴</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <Button 
-                    onClick={() => window.location.href = '/exam/reserve?brchType=junior'}
-                    variant="outline" 
-                    className="w-full justify-start"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    초등부 시험 예약
-                  </Button>
-                  <Button 
-                    onClick={() => window.location.href = '/exam/reserve?brchType=middle'}
-                    variant="outline" 
-                    className="w-full justify-start"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    중등부 시험 예약
-                  </Button>
+                  {/* Show exam reservation only for new users or if no test scheduled */}
+                  {(dashboardData?.enrollment_status === 'new') && (
+                    <>
+                      <Button 
+                        onClick={() => window.location.href = '/exam/reserve?brchType=junior'}
+                        className="w-full justify-start bg-green-600 hover:bg-green-700"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        초등부 시험 예약
+                      </Button>
+                      <Button 
+                        onClick={() => window.location.href = '/exam/reserve?brchType=middle'}
+                        className="w-full justify-start bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        중등부 시험 예약
+                      </Button>
+                    </>
+                  )}
+                  
                   <Button 
                     onClick={() => window.location.href = '/programs'}
                     variant="outline" 
@@ -2248,10 +2431,52 @@ const ParentDashboard = () => {
                     <FileText className="w-4 h-4 mr-2" />
                     최신 소식
                   </Button>
+                  
+                  {/* Show admission forms for test_taken users */}
+                  {dashboardData?.enrollment_status === 'test_taken' && (
+                    <Button 
+                      onClick={() => window.location.href = `/dashboard?id=${dashboardData?.parent_info?.household_token}`}
+                      className="w-full justify-start bg-purple-600 hover:bg-purple-700"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      입학 서류 작성
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Parent Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>학부모 정보</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-gray-600">이름</Label>
+                    <p className="font-medium">{dashboardData?.parent_info?.name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-600">이메일</Label>
+                    <p className="font-medium">{dashboardData?.parent_info?.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-600">연락처</Label>
+                    <p className="font-medium">{dashboardData?.parent_info?.phone || '미입력'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-gray-600">캠퍼스</Label>
+                    <Badge variant="outline">
+                      {dashboardData?.parent_info?.branch === 'kinder' ? '유치부' :
+                       dashboardData?.parent_info?.branch === 'junior' ? '초등부' : '중등부'}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contact Information */}
             <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
               <CardContent className="p-6">
                 <h4 className="font-semibold text-purple-900 mb-3">문의사항이 있으시다면?</h4>
