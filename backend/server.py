@@ -327,6 +327,88 @@ async def update_checklist(token: str, checklist_data: ChecklistUpdate):
     
     return {"message": "Checklist updated successfully"}
 
+@api_router.post("/exam/reservation")
+async def create_exam_reservation(reservation_data: ExamReservationCreate, current_user: UserResponse = Depends(get_current_user)):
+    # Create exam reservation record
+    reservation = ExamReservation(
+        household_token=current_user.household_token,
+        user_id=current_user.id,
+        brchType=reservation_data.brchType,
+        campus=reservation_data.campus,
+        slot_id=reservation_data.slot_id,
+        slot_start=datetime.fromisoformat(reservation_data.slot_start.replace('Z', '+00:00')),
+        slot_end=datetime.fromisoformat(reservation_data.slot_end.replace('Z', '+00:00')),
+        level_track=reservation_data.level_track,
+        notes=reservation_data.notes
+    )
+    
+    # Save to database
+    reservation_dict = reservation.dict()
+    reservation_dict['slot_start'] = reservation_dict['slot_start'].isoformat()
+    reservation_dict['slot_end'] = reservation_dict['slot_end'].isoformat()
+    reservation_dict['created_at'] = reservation_dict['created_at'].isoformat()
+    
+    await db.exam_reservations.insert_one(reservation_dict)
+    
+    # TODO: Trigger webhook for Google Sheets logging
+    # TODO: Send Kakao AlimTalk notification
+    
+    return {
+        "message": "Exam reservation created successfully",
+        "reservation_id": reservation.id,
+        "status": reservation.status
+    }
+
+@api_router.get("/exam/reservations")
+async def get_user_reservations(current_user: UserResponse = Depends(get_current_user)):
+    reservations = await db.exam_reservations.find({
+        "household_token": current_user.household_token
+    }).to_list(100)
+    
+    return {"reservations": reservations}
+
+@api_router.get("/exam/available-slots")
+async def get_available_exam_slots(brchType: str, campus: str = None):
+    # Mock available slots for demo
+    # In production, this would query actual availability
+    mock_slots = [
+        {
+            "id": "slot_1",
+            "date": "2025-02-10",
+            "start_time": "10:00",
+            "end_time": "11:30" if brchType == "middle" else "11:00",
+            "campus": "강남캠퍼스",
+            "available": True,
+            "capacity": 12,
+            "booked": 3
+        },
+        {
+            "id": "slot_2", 
+            "date": "2025-02-10",
+            "start_time": "14:00",
+            "end_time": "15:30" if brchType == "middle" else "15:00",
+            "campus": "강남캠퍼스",
+            "available": True,
+            "capacity": 12,
+            "booked": 7
+        },
+        {
+            "id": "slot_3",
+            "date": "2025-02-15",
+            "start_time": "10:00", 
+            "end_time": "11:30" if brchType == "middle" else "11:00",
+            "campus": "서초캠퍼스",
+            "available": False,
+            "capacity": 8,
+            "booked": 8
+        }
+    ]
+    
+    if campus:
+        mock_slots = [slot for slot in mock_slots if slot["campus"] == campus]
+    
+    return {"available_slots": mock_slots}
+
 # Include the router in the main app
 app.include_router(api_router)
 
