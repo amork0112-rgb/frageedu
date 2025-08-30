@@ -5462,7 +5462,7 @@ const AdminStudentManagement = () => {
                         <SelectValue placeholder="전체" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">전체</SelectItem>
+                        <SelectItem value="all">전체</SelectItem>
                         {gradeOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
