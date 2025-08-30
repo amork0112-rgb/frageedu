@@ -502,6 +502,133 @@ async def get_available_exam_slots(brchType: str, campus: str = None):
     
     return {"available_slots": mock_slots}
 
+# Admin Routes
+@api_router.post("/admin/signup")
+async def create_admin(admin_data: AdminCreate):
+    # Check if admin already exists
+    existing_admin = await db.admins.find_one({"$or": [{"username": admin_data.username}, {"email": admin_data.email}]})
+    if existing_admin:
+        raise HTTPException(status_code=400, detail="Admin already exists")
+    
+    # Create admin
+    admin = Admin(
+        username=admin_data.username,
+        email=admin_data.email,
+        password_hash=hash_password(admin_data.password)
+    )
+    
+    # Insert admin
+    await db.admins.insert_one(admin.dict())
+    
+    # Create JWT token
+    token = create_admin_jwt_token(admin.id, admin.username)
+    
+    return {
+        "message": "Admin created successfully",
+        "token": token,
+        "admin": AdminResponse(**admin.dict())
+    }
+
+@api_router.post("/admin/login")
+async def admin_login(login_data: AdminLogin):
+    admin = await db.admins.find_one({"username": login_data.username})
+    if not admin or not verify_password(login_data.password, admin['password_hash']):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Update last login
+    await db.admins.update_one(
+        {"id": admin['id']},
+        {"$set": {"last_login": datetime.now(timezone.utc)}}
+    )
+    
+    token = create_admin_jwt_token(admin['id'], admin['username'])
+    
+    return {
+        "message": "Login successful",
+        "token": token,
+        "admin": AdminResponse(**admin)
+    }
+
+@api_router.get("/admin/profile")
+async def get_admin_profile(current_admin: AdminResponse = Depends(get_current_admin)):
+    return current_admin
+
+# News Management Routes
+@api_router.get("/news")
+async def get_news_articles(category: Optional[str] = None, published: bool = True, skip: int = 0, limit: int = 10):
+    query = {"published": published} if published else {}
+    if category and category != "전체":
+        query["category"] = category
+    
+    articles = await db.news_articles.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    return {"articles": articles}
+
+@api_router.get("/news/{article_id}")
+async def get_news_article(article_id: str):
+    article = await db.news_articles.find_one({"id": article_id})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    return NewsResponse(**article)
+
+@api_router.post("/admin/news")
+async def create_news_article(article_data: NewsArticleCreate, current_admin: AdminResponse = Depends(get_current_admin)):
+    article = NewsArticle(
+        **article_data.dict(),
+        created_by=current_admin.id
+    )
+    
+    article_dict = article.dict()
+    article_dict['created_at'] = article_dict['created_at'].isoformat()
+    article_dict['updated_at'] = article_dict['updated_at'].isoformat()
+    
+    await db.news_articles.insert_one(article_dict)
+    
+    return {
+        "message": "Article created successfully",
+        "article_id": article.id
+    }
+
+@api_router.put("/admin/news/{article_id}")
+async def update_news_article(article_id: str, article_data: NewsArticleUpdate, current_admin: AdminResponse = Depends(get_current_admin)):
+    article = await db.news_articles.find_one({"id": article_id})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    update_data = {k: v for k, v in article_data.dict().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.news_articles.update_one(
+        {"id": article_id},
+        {"$set": update_data}
+    )
+    
+    return {"message": "Article updated successfully"}
+
+@api_router.delete("/admin/news/{article_id}")
+async def delete_news_article(article_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    result = await db.news_articles.delete_one({"id": article_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    return {"message": "Article deleted successfully"}
+
+@api_router.get("/admin/news")
+async def get_admin_news_articles(current_admin: AdminResponse = Depends(get_current_admin), category: Optional[str] = None, skip: int = 0, limit: int = 20):
+    query = {}
+    if category and category != "전체":
+        query["category"] = category
+    
+    articles = await db.news_articles.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    total_count = await db.news_articles.count_documents(query)
+    
+    return {
+        "articles": articles,
+        "total": total_count,
+        "skip": skip,
+        "limit": limit
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
