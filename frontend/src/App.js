@@ -94,6 +94,9 @@ const Header = () => {
             <Button variant="ghost" onClick={() => window.location.href = '/login'}>
               Login
             </Button>
+            <Button variant="ghost" onClick={() => window.location.href = '/admin/login'} className="text-gray-500 hover:text-purple-600">
+              Admin
+            </Button>
             <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => window.location.href = '/signup'}>
               Sign Up
             </Button>
