@@ -1550,16 +1550,523 @@ const News = () => {
   );
 };
 
-const Market = () => (
-  <div className="min-h-screen bg-white pt-20">
-    <Header />
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <h1 className="text-4xl font-bold text-gray-900 mb-8">Frage Market</h1>
-      <p className="text-xl text-gray-600">마켓 페이지 (구현 예정)</p>
+// Frage Market - Complete Shopping Mall
+const Market = () => {
+  const { user, token } = useAuth();
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [cart, setCart] = useState({ items: [], total_items: 0, total_amount: 0 });
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [showCart, setShowCart] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  useEffect(() => {
+    fetchInitialData();
+    if (token) {
+      fetchCart();
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [selectedCategory, searchQuery, currentPage]);
+
+  const fetchInitialData = async () => {
+    try {
+      const [categoriesRes, featuredRes] = await Promise.all([
+        axios.get(`${API}/market/categories`),
+        axios.get(`${API}/market/featured`)
+      ]);
+      
+      setCategories(categoriesRes.data.categories);
+      setFeaturedProducts(featuredRes.data.products);
+    } catch (error) {
+      console.error('Failed to fetch initial data:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 12,
+        sort_by: 'created_at',
+        sort_order: 'desc'
+      });
+      
+      if (selectedCategory) params.append('category', selectedCategory);
+      if (searchQuery) params.append('search', searchQuery);
+
+      const response = await axios.get(`${API}/market/products?${params}`);
+      setProducts(response.data.products);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCart = async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get(`${API}/market/cart`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setCart(response.data);
+    } catch (error) {
+      console.error('Failed to fetch cart:', error);
+    }
+  };
+
+  const addToCart = async (productId, selectedSize = null, selectedColor = null) => {
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/market/cart/add`, {
+        product_id: productId,
+        quantity: 1,
+        selected_size: selectedSize,
+        selected_color: selectedColor
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      fetchCart();
+      alert('장바구니에 추가되었습니다!');
+    } catch (error) {
+      alert('장바구니 추가에 실패했습니다.');
+      console.error(error);
+    }
+  };
+
+  const removeFromCart = async (cartItemId) => {
+    try {
+      await axios.delete(`${API}/market/cart/${cartItemId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      fetchCart();
+    } catch (error) {
+      alert('삭제에 실패했습니다.');
+      console.error(error);
+    }
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('ko-KR').format(price) + '원';
+  };
+
+  const getCategoryDisplayName = (category) => {
+    const categoryMap = {
+      'uniform': '교복',
+      'accessories': '용품',
+      'books': '교재',
+      'sportswear': '체육복'
+    };
+    return categoryMap[category] || category;
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      
+      {/* Market Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-16 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-4xl lg:text-5xl font-bold mb-4">
+              Frage Market
+            </h1>
+            <p className="text-xl text-purple-100 mb-8">
+              프라게 EDU 공식 쇼핑몰 - 교복, 용품, 교재를 한 곳에서
+            </p>
+            
+            {/* Search Bar */}
+            <div className="max-w-md mx-auto relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                type="text"
+                placeholder="상품을 검색하세요..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 py-3 text-gray-900"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar */}
+          <div className="lg:w-1/4">
+            <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
+              <h3 className="text-lg font-semibold mb-4">카테고리</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setSelectedCategory('')}
+                  className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
+                    selectedCategory === '' ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  전체 ({categories.reduce((sum, cat) => sum + cat.count, 0)})
+                </button>
+                {categories.map(category => (
+                  <button
+                    key={category.name}
+                    onClick={() => setSelectedCategory(category.name)}
+                    className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
+                      selectedCategory === category.name ? 'bg-purple-100 text-purple-700' : 'hover:bg-gray-100'
+                    }`}
+                  >
+                    {getCategoryDisplayName(category.name)} ({category.count})
+                  </button>
+                ))}
+              </div>
+
+              {/* Cart Summary */}
+              {token && cart.total_items > 0 && (
+                <div className="mt-8 p-4 bg-purple-50 rounded-lg">
+                  <h4 className="font-semibold text-purple-900 mb-2">장바구니</h4>
+                  <p className="text-sm text-purple-700 mb-3">
+                    {cart.total_items}개 상품 | {formatPrice(cart.total_amount)}
+                  </p>
+                  <Button 
+                    onClick={() => setShowCart(true)}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    size="sm"
+                  >
+                    장바구니 보기
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:w-3/4">
+            {/* Featured Products */}
+            {!selectedCategory && !searchQuery && featuredProducts.length > 0 && (
+              <div className="mb-12">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">추천 상품</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {featuredProducts.slice(0, 4).map(product => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onAddToCart={addToCart}
+                      onViewDetails={setSelectedProduct}
+                      formatPrice={formatPrice}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Products Grid */}
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {selectedCategory ? getCategoryDisplayName(selectedCategory) : '전체 상품'}
+                {searchQuery && <span className="text-purple-600"> "{searchQuery}" 검색 결과</span>}
+              </h2>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-gray-400 text-lg mb-4">상품이 없습니다.</div>
+                <Button 
+                  onClick={() => {
+                    setSelectedCategory('');
+                    setSearchQuery('');
+                  }}
+                  variant="outline"
+                >
+                  전체 상품 보기
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {products.map(product => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    onAddToCart={addToCart}
+                    onViewDetails={setSelectedProduct}
+                    formatPrice={formatPrice}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Cart Modal */}
+      {showCart && (
+        <CartModal 
+          cart={cart}
+          onClose={() => setShowCart(false)}
+          onRemove={removeFromCart}
+          formatPrice={formatPrice}
+          token={token}
+        />
+      )}
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <ProductDetailsModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          onAddToCart={addToCart}
+          formatPrice={formatPrice}
+        />
+      )}
+
+      <Footer />
     </div>
-    <Footer />
-  </div>
-);
+  );
+};
+
+// Product Card Component
+const ProductCard = ({ product, onAddToCart, onViewDetails, formatPrice }) => {
+  return (
+    <Card className="group hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+      <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-100">
+        <img 
+          src={product.images?.[0] || 'https://via.placeholder.com/300x300?text=상품이미지'}
+          alt={product.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+        {product.is_featured && (
+          <div className="absolute top-2 left-2">
+            <Badge className="bg-red-500 text-white">추천</Badge>
+          </div>
+        )}
+      </div>
+      
+      <CardContent className="p-4">
+        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{product.name}</h3>
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{product.description}</p>
+        
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xl font-bold text-purple-600">
+            {formatPrice(product.price)}
+          </span>
+          {product.stock_quantity < 10 && (
+            <Badge variant="destructive" className="text-xs">재고 {product.stock_quantity}개</Badge>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => onViewDetails(product)}
+            className="flex-1"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            상세보기
+          </Button>
+          <Button 
+            size="sm"
+            onClick={() => onAddToCart(product.id)}
+            className="flex-1 bg-purple-600 hover:bg-purple-700"
+            disabled={product.stock_quantity === 0}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            담기
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Cart Modal Component
+const CartModal = ({ cart, onClose, onRemove, formatPrice, token }) => {
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2">
+            <Smartphone className="w-5 h-5" />
+            <span>장바구니 ({cart.total_items}개)</span>
+          </DialogTitle>
+        </DialogHeader>
+        
+        {cart.items.length === 0 ? (
+          <div className="text-center py-8">
+            <Smartphone className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">장바구니가 비어있습니다.</p>
+          </div>
+        ) : (
+          <div>
+            <div className="space-y-4 mb-6">
+              {cart.items.map(item => (
+                <div key={item.cart_item_id} className="flex items-center space-x-4 p-4 border rounded-lg">
+                  <img 
+                    src={item.product.images?.[0] || 'https://via.placeholder.com/80x80'}
+                    alt={item.product.name}
+                    className="w-16 h-16 object-cover rounded"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-medium">{item.product.name}</h4>
+                    <div className="text-sm text-gray-600">
+                      {item.selected_size && <span>사이즈: {item.selected_size}</span>}
+                      {item.selected_color && <span> | 색상: {item.selected_color}</span>}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      수량: {item.quantity}개 | {formatPrice(item.price_at_time)}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold">{formatPrice(item.item_total)}</div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => onRemove(item.cart_item_id)}
+                    >
+                      <Trash className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="border-t pt-4">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-lg font-semibold">총 금액:</span>
+                <span className="text-xl font-bold text-purple-600">
+                  {formatPrice(cart.total_amount)}
+                </span>
+              </div>
+              
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={onClose} className="flex-1">
+                  계속 쇼핑
+                </Button>
+                <Button className="flex-1 bg-purple-600 hover:bg-purple-700">
+                  주문하기
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Product Details Modal Component
+const ProductDetailsModal = ({ product, onClose, onAddToCart, formatPrice }) => {
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{product.name}</DialogTitle>
+        </DialogHeader>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <img 
+              src={product.images?.[0] || 'https://via.placeholder.com/400x400'}
+              alt={product.name}
+              className="w-full rounded-lg"
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <div className="text-2xl font-bold text-purple-600 mb-2">
+                {formatPrice(product.price)}
+              </div>
+              <div className="text-gray-600">{product.description}</div>
+            </div>
+
+            {product.size_options.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">사이즈</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {product.size_options.map(size => (
+                    <Button
+                      key={size}
+                      variant={selectedSize === size ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedSize(size)}
+                    >
+                      {size}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {product.color_options.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium">색상</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {product.color_options.map(color => (
+                    <Button
+                      key={color}
+                      variant={selectedColor === color ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedColor(color)}
+                    >
+                      {color}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {product.specifications && (
+              <div>
+                <Label className="text-sm font-medium">상품 정보</Label>
+                <div className="mt-2 space-y-1">
+                  {Object.entries(product.specifications).map(([key, value]) => (
+                    <div key={key} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{key}:</span>
+                      <span>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4">
+              <Button 
+                onClick={() => {
+                  onAddToCart(product.id, selectedSize, selectedColor);
+                  onClose();
+                }}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                disabled={product.stock_quantity === 0}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                장바구니에 추가
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // Token Auth Wrapper for Admission Portal
 const TokenAuthWrapper = ({ children }) => {
