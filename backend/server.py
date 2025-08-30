@@ -80,10 +80,23 @@ class AuditLog(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     phone: str
-    parent_name: str
+    name: str  # parent name
     student_name: str
     password: str
     terms_accepted: bool
+    branch: str  # kinder, junior, middle
+
+class ParentCreate(BaseModel):
+    name: str
+    phone: str
+    email: str
+    branch: str
+
+class StudentCreate(BaseModel):
+    name: str
+    grade: str
+    birthdate: Optional[str] = None
+    notes: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
