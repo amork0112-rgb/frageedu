@@ -423,6 +423,12 @@ class AdminCreate(BaseModel):
     email: str
     password: str
 
+class AdminCreateWithRole(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str = "admin"  # admin, super_admin, kinder_admin, junior_admin, middle_admin
+
 class AdminLogin(BaseModel):
     username: str
     password: str
