@@ -2573,14 +2573,14 @@ const AdminNewsEditor = () => {
             <Card>
               <CardHeader>
                 <CardTitle>내용</CardTitle>
+                <CardDescription>
+                  리치 에디터를 사용하여 이미지와 함께 풍부한 내용을 작성하세요
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({...formData, content: e.target.value})}
-                  placeholder="뉴스 내용을 입력하세요..."
-                  rows={10}
-                  required
+                <RichTextEditor
+                  content={formData.content}
+                  onChange={(content) => setFormData({...formData, content})}
                 />
               </CardContent>
             </Card>
