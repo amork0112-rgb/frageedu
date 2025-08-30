@@ -2603,7 +2603,7 @@ async def acknowledge_notices(
 async def create_sample_student_data(current_admin: AdminResponse = Depends(get_current_admin)):
     """Create sample student data for testing (admin only)"""
     try:
-        if current_admin.role not in ["admin", "super_admin"]:
+        if current_admin.role not in ["admin", "super_admin", "kinder_admin", "junior_admin", "middle_admin"]:
             raise HTTPException(status_code=403, detail="Only admin can create sample data")
         
         # Check if we already have students
