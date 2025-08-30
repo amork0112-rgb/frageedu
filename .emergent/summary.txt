@@ -1,80 +1,113 @@
 <analysis>
-The AI engineer successfully transformed a fragmented admission process into a unified web application for Frage EDU, starting with an MVP and incrementally adding features. Key accomplishments include a robust authentication and token system, a multi-section admission portal, and a comprehensive website redesign. The engineer meticulously addressed user feedback, from adding consent popups and PDF integration to a complete site structure overhaul and implementing a blog-style rich editor for news. Debugging compile errors, including JSX issues and duplicate function declarations, was handled efficiently. The most recent work involves expanding the admin portal, with the engineer currently adding member management, following a detailed proposal from the user.
+The AI engineer successfully built the initial Frage EDU application and then significantly enhanced it based on user feedback. The work began with syncing the codebase from GitHub, which required resolving local workspace inconsistencies. Key features implemented include a robust admission flow system with automated progress tracking and detailed data storage. A major focus was the development of a next-generation parent dashboard, featuring dynamic, role/branch-specific content rendering. Frontend login and registration issues were debugged, revealing a critical  mismatch, where the frontend was pointing to a non-functional external URL. This was ultimately resolved for admin login by creating a new admin user directly on the external environment. Additionally, a comprehensive Find ID/Reset Password system was built, evolving to use student/parent demographic data. The latest task involves implementing a detailed Role-Based Access Control (RBAC) system for admin users, including branch-specific data access, which is currently facing issues with the student listing API. The AI engineer consistently prioritized user requirements and systematically debugged issues, demonstrating strong problem-solving skills.
 </analysis>
 
 <product_requirements>
-The goal is to build a responsive web app and PWA for Frage EDU, unifying parent admissions and community features currently split across Naver Band, Kakao, and Google Forms. Parents need to sign up, verify email, and receive a  for admission data (Consent, Forms, Guides, Checklist). The admission portal displays a banner, three card sections with status, and a checklist. Privacy rules dictate token-based access.
+The core product is the Frage EDU web application, aiming to unify admission and community features.
+**Initial Build (by previous AI engineer):**
+*   **Parent Signup:** Email, phone, password, ToS, , redirect to dashboard. Enhanced with student birthdate and branch (Kinder, Junior, Middle).
+*   **Admission Portal:** Conditional welcome page (consultation vs. full guide based on admin enrollment).
+*   **Website Structure:** Homepage, About, Programs, Admissions, News, Footer. Admin login moved to footer.
+*   **Admin System:** Comprehensive member management (list, view, update, bulk actions, audit logs) and news content CRUD.
+*   **Frage Market:** Full e-commerce platform (products, cart, order management).
+*   **Enhanced Parent Dashboard:** Detailed, branch-specific, status-aware dashboard with progress, exams, timetable, homework, attendance, billing, notices, resources, multi-child support, and conditional card rendering.
 
-**MVP Priorities:**
-1.  **Parent Signup + Admission Portal:** Web signup (email, phone, password, ToS),  generation, redirect to a dashboard. Implement Consent, Forms, Guides, and Checklist pages with token-based privacy rules.
-2.  **Teacher–Parent Chat:** Grouped channels by topic (absences, transport, Q&A), quick-action buttons, Google Sheets integration for logging.
-3.  **Frage Market:** E-commerce module (product, cart, checkout) to avoid SmartStore fees.
-
-**Key Features Implemented/Requested:**
-*   Consent forms: Detailed popups for each item, PDF rendering, and parent/student name integration with timestamped agreement.
-*   Full Website Structure: Homepage, About, Programs, Admissions, News, Footer.
-*   Exam Reservation Flow: For junior/middle school (not kindergarten), Tally integration for initial reservations, campus/slot selection, notes, consent, database record creation, and a confirmation page.
-*   Admin System: For managing news content (create, read, update, delete) with categories (All, Openings, Notices, News) and a blog-style rich editor supporting Markdown and image uploads.
-*   Extended Admin Management: User/parent management, application/consent management, exam reservation/results management, class assignment/registration, communication/notifications, reports/statistics, and role-based permissions.
-*   Brand identity: Use , remove tagline, make logo clickable to home.
-*   Community section: Removed as per user request.
+**Current Phase Requirements (from trajectory):**
+*   **Admission Procedure Summary (Operational Table):** Define specific flows for Kinder Regular, Kinder Transfer, Junior, Middle, Kinder Single, with detailed steps (e.g., Seminar → Application → Payment → Consent → Class Assignment).
+*   **Automated Dashboard Progress Update:** Auto-update enrollment steps based on events (e.g., , , , , ).
+*   **Admin Filters/Reports:** Implement filters for , , , , . Define conversion funnels.
+*   **AlimTalk Notifications:** Automated notifications upon stage changes (e.g., Application Not Submitted, Payment Pending).
+*   **Welcome Page Modification:** For kinder branch, remove consultation or level test sections, leaving only inquiry information.
+*   **Find ID/Password:** Implement Forgot ID/Password functionality. Initially based on email, then improved to use Parent Name + Student Name + Student Birthdate.
+*   **Robust Admin Login:** Ensure reliable admin login.
+*   **Registration Fix:** Resolve issues preventing new user registration.
+*   **Role-Based Access Control (RBAC) for Admin:**
+    *   **Roles:**  (full access),  (kinder only),  (junior, kinder_single, middle),  (middle only).
+    *   **Permissions:** Granular toggles (e.g., , , , ).
+    *   **Data Access Filters:** Branch whitelist per admin user.
+    *   **Super Admin UI:** Interface to manage roles, allowed branches, and permissions.
+    *   **Audit Logging:** Record all permission/branch changes.
+*   **Student Management UI (Admin):** Redesign with search, filters (branch, status, grade), quick action buttons (new student, Excel export), main table with student list, side panel/modal for student details (profile, progress, attendance, grades, payments, actions), and activity logs. Access filtered by RBAC.
 </product_requirements>
 
 <key_technical_concepts>
--   **Full-stack Development**: React (frontend), FastAPI (backend), MongoDB (database).
--   **UI/UX**: Shadcn UI components, Tailwind CSS for styling, Framer Motion (implicitly used for animations), mobile-first responsive design.
--   **Authentication**: JWT for secure admin and user sessions,  for linking admission data.
--   **Data Handling**: Pydantic for data validation, UUIDs for MongoDB IDs, ISO 8601 for date/time serialization.
--   **Integrations**: Tally for initial exam reservations, potential for Google Sheets, Solapi AlimTalk, Google Apps Script.
--   **Content Management**: Markdown rendering for news content, Base64 image upload.
+- **Full-stack Architecture:** React (Frontend), FastAPI (Backend), MongoDB (Database).
+- **Authentication/Authorization:** JWT, , Role-Based Access Control (RBAC).
+- **Data Modeling:** Pydantic for validation, UUIDs for IDs, ISO 8601 datetimes.
+- **UI/UX:** Tailwind CSS, Shadcn UI, mobile-first design, conditional rendering.
+- **API Communication:** Axios for frontend API calls.
+- **Deployment/Environment:** Kubernetes, Supervisor for process management,  for environment variables, external preview URLs for frontend.
 </key_technical_concepts>
 
 <code_architecture>
-The application follows a standard full-stack architecture:
+The application follows a standard full-stack architecture with a FastAPI backend and a React frontend.
 
 
 
-**Key Files and Changes:**
-
-*   **/app/backend/server.py**:
-    *   **Importance**: The core FastAPI application handling all backend logic, API endpoints, and database interactions.
-    *   **Changes**: Initial setup of user authentication (signup, login, JWT token generation), user profile management, news CRUD operations (with admin authentication), file upload endpoints (Base64 image upload), and exam reservation related APIs (creation, slot management, status updates). Includes Pydantic models for request/response validation and MongoDB integration using Motor.
-*   **/app/frontend/src/App.js**:
-    *   **Importance**: The main React component defining the overall application structure and routing.
-    *   **Changes**: Centralized routing for public pages (Homepage, Programs, Admissions, News, Login, Signup), internal user pages (Dashboard, Consent, Forms, Guide, Checklist), and admin pages (AdminLogin, AdminDashboard, AdminNewsList, AdminNewsEditor). Implemented  for protected routes and conditional rendering of header elements. Includes main layout structure and global context providers.
-*   **/app/frontend/src/components/Header.jsx**:
-    *   **Importance**: Provides consistent navigation and branding across the application.
-    *   **Changes**: Updated to use  for branding, made the logo clickable to the home page, incorporated simplified navigation links (About, Programs, Admissions, News), and added a dynamic Admin login link.
-*   **/app/frontend/src/pages/NewsPage.jsx**:
-    *   **Importance**: Displays news articles to the public.
-    *   **Changes**: Refactored to fetch news dynamically from the backend, implemented category filtering (All, Openings, Notices, News), and integrated Markdown rendering for article content.
-*   **/app/frontend/src/pages/admin/AdminNewsEditorPage.jsx**:
-    *   **Importance**: Provides an interface for administrators to create and edit news content.
-    *   **Changes**: Integrated the  component, allowing Markdown input and direct image uploads (converted to Base64). Supports setting article title, category, featured status, and publish status.
-*   **/app/frontend/src/pages/AdmissionsPage.jsx**:
-    *   **Importance**: Central hub for admission process information and entry points.
-    *   **Changes**: Replaced previous content with program-specific admission buttons (e.g., 입학시험 예약 for Junior/Middle) and a 4-step admission process timeline.
-
+- **/app/backend/server.py**:
+    - **Importance:** This file is the core of the FastAPI backend, centralizing all API endpoints, MongoDB database models (Pydantic), and business logic. It handles authentication, data management for users, parents, students, admissions, market, and now the advanced dashboard and RBAC.
+    - **Changes:**
+        - **Extensive Pydantic Models:** Added models for , , , , , , , , , , , , , , , , .
+        - **Authentication & User Management:** Updated signup to initialize admission flows and correctly pass student branch data. Implemented Find Username (by parent/student name/birthdate) and Reset Password APIs.
+        - **Admission Flow APIs:** , , .
+        - **Parent Dashboard APIs:**  (new comprehensive dashboard API), .
+        - **Admin Management APIs:** , , .
+        - **RBAC APIs:** , , , , ,  (student listing with RBAC filtering).
+        - **Utilities:** Added , , , , .
+        - **Dependencies:** Ensured  and other required packages are listed in .
+        - **Error Handling:** Fixed ObjectId serialization and other minor issues.
+- **/app/frontend/src/App.js**:
+    - **Importance:** This is the main React component, serving as the application's entry point, handling routing, central state management, and housing many critical components and pages.
+    - **Changes:**
+        - **Routing:** Added new routes for , ,  (later ), , , , . Updated login/signup redirection logic.
+        - **Components:** Integrated  (modified for kinder-specific content),  (new component for the enhanced parent dashboard, includes 8 conditional cards), , ,  (debugged form selectors).
+        - **UI Modifications:** Updated  and  integration (Admin link moved to footer, Market removed from header). Conditional rendering logic for dashboard cards based on , , .
+        - **Dependencies/Styling:** Imported  icon from .
+        - **API Consumption:** Switched  from  to  for consistency.
+- **/app/frontend/src/components/Header.jsx**:
+    - **Importance:** Global navigation component.
+    - **Changes:** Admin link removed, Market link removed for public users.
+- **/app/frontend/src/components/Footer.jsx**:
+    - **Importance:** Global footer content.
+    - **Changes:** Admin link added under the Market link.
+- **/app/frontend/.env**:
+    - **Importance:** Stores environment variables critical for frontend-backend communication.
+    - **Changes:**  was found to be set to an external preview URL, leading to frontend issues, while backend testing occurred on . This was a major point of debugging. No direct code change here, but its value was central to issues.
 </code_architecture>
 
 <pending_tasks>
--   **Teacher-Parent Chat System**: Grouped channels, quick-action buttons, Google Sheets logging, notification flow for teachers.
--   **Frage Market**: E-commerce module (product, cart, checkout).
--   **Exam Reservation System (Phase 2)**: Replace Tally with in-app reservation form, integrate Google Calendar API, build teacher dashboard for managing reservations (confirm/cancel).
--   **Comprehensive Admin Management**: Member/Parent management, Application/Consent management, Exam Results management, Class Assignment/Registration, Communication/Notifications, Reports/Statistics, Admin Role/Permissions.
+- Debug and resolve the remaining issue with the  API not correctly returning student data with RBAC filtering.
+- Implement the Impersonate feature for Admin.
+- Develop the Teacher-Parent Chat System.
+- Develop the Exam Reservation System (Phase 2, replacing Tally).
+- Complete remaining Comprehensive Admin Management features (Application/Consent, Exam Results, Class Assignment/Registration, Communication/Notifications, Reports/Statistics).
+- Implement WebSocket integration for real-time push notifications.
+- Integrate Solapi AlimTalk API for actual notification sending.
+- Performance optimization (e.g., lazy loading for dashboard cards).
 </pending_tasks>
 
 <current_work>
-Immediately before this summary request, the AI engineer was in the process of implementing the comprehensive Admin management system, based on the user's detailed proposal in Chat Message 278.
+Immediately before this summary, the AI engineer was focused on implementing a comprehensive Role-Based Access Control (RBAC) system for administrators and enhancing the Student Management section.
 
-The engineer's recent actions include:
-1.  **Adding Admin Login to Header**: Modified  and  to include an Admin login option directly in the main website's header. This allows administrators to log in from any public page.
-2.  **Preparing Backend APIs**: Edited  to extend the backend with necessary API endpoints for the new administrative features. This likely involves new models and routes for managing various aspects like users, applications, exams, etc.
-3.  **Extending Frontend Admin System**: Updated  to add new routes and integrate the new frontend components for the expanded admin portal.
-4.  **Initiating Member Management**: The very last action stated was, 이제 회원 관리 시스템을 추가하겠습니다: (Now I will add the member management system). This indicates the engineer has just begun working on the first section of the proposed comprehensive admin portal, specifically focusing on displaying, searching, filtering, and managing member/parent details.
+**Work Accomplished:**
+1.  **RBAC Data Models & APIs (Backend - ):**
+    *   New Pydantic models: , , ,  were added.
+    *   Utility functions:  and  were created to enforce branch-based filtering and permission checks.
+    *   New RBAC-specific API endpoints:
+        *   : Initializes default roles and permissions (super admin only).
+        *   : Retrieves defined roles.
+        *   : Retrieves master permissions.
+        *   : Manages branches an admin can access.
+        *   : Manages individual admin permissions.
+        *   : Modified to filter students based on the logged-in admin's allowed branches and permissions.
+2.  **RBAC System Initialization:** The RBAC system was successfully initialized using the  role (identified after debugging issues related to non-super admin roles and expired tokens).
+3.  **Student Data Update:** During testing of the new  API, it was noted that existing test student data lacked the  and  fields. These fields were updated for existing students to ensure proper filtering.
+
+**Current Issue:**
+Despite RBAC initialization and student data updates, the  API is still returning  or empty data. The engineer is currently investigating this, suspecting a problem with the MongoDB aggregation pipeline within the  function in . The last action was to simplify the query in  to diagnose this issue.
 </current_work>
 
 <optional_next_step>
-Continue implementing the 회원 / 학부모 관리 (Member / Parent Management) section of the admin portal.
+Debug the  API to correctly return student data, ensuring RBAC branch filtering works as expected.
 </optional_next_step>
 
