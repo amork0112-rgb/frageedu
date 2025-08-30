@@ -693,6 +693,11 @@ async def upload_image_base64(file: UploadFile = File(...), current_admin: Admin
 # Include the router in the main app
 app.include_router(api_router)
 
+# Mount static files for uploads
+upload_dir = Path("uploads")
+upload_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
