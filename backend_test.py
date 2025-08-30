@@ -673,37 +673,121 @@ class FrageEDUAPITester:
         
         return success
 
-    def test_branch_filtering_issue(self):
-        """Test the specific branch filtering issue"""
+    def test_branch_filtering_unauthorized_access(self):
+        """Test FIXED branch filtering - admin should get empty results for unauthorized branches"""
         if not self.admin_token:
             print("❌ No admin token available for branch filtering test")
             return False
         
-        print("🔍 Testing branch filtering behavior...")
+        print("🔍 Testing FIXED branch filtering logic...")
         
-        # Test with different branch filters to see RBAC behavior
-        branches_to_test = ["kinder", "junior", "middle"]
+        # First, get admin's allowed branches
+        success, response = self.run_test("Get Admin Allowed Branches", "GET", "admin/students", 200)
+        if not success:
+            return False
         
-        for branch in branches_to_test:
+        allowed_branches = response.get('allowed_branches', [])
+        print(f"   Admin allowed branches: {allowed_branches}")
+        
+        # Test unauthorized branch access - should return empty results
+        unauthorized_branches = []
+        all_branches = ["kinder", "junior", "middle"]
+        for branch in all_branches:
+            if branch not in allowed_branches:
+                unauthorized_branches.append(branch)
+        
+        if unauthorized_branches:
+            for branch in unauthorized_branches:
+                params = {"branch_filter": branch}
+                success, response = self.run_test(f"Test unauthorized {branch} branch access", "GET", "admin/students", 200, params=params)
+                
+                if success and response:
+                    students = response.get('students', [])
+                    if len(students) == 0:
+                        print(f"   ✅ Correctly returned empty results for unauthorized {branch} branch")
+                    else:
+                        print(f"   ❌ BUG: Found {len(students)} students in unauthorized {branch} branch!")
+                        return False
+        else:
+            print("   ℹ️  Admin has access to all branches - cannot test unauthorized access")
+        
+        return True
+
+    def test_branch_filtering_authorized_access(self):
+        """Test branch filtering with authorized branches - should return filtered results"""
+        if not self.admin_token:
+            print("❌ No admin token available for authorized branch test")
+            return False
+        
+        print("🔍 Testing authorized branch filtering...")
+        
+        # Get admin's allowed branches
+        success, response = self.run_test("Get Admin Info for Authorized Test", "GET", "admin/students", 200)
+        if not success:
+            return False
+        
+        allowed_branches = response.get('allowed_branches', [])
+        all_students = response.get('students', [])
+        
+        print(f"   Admin allowed branches: {allowed_branches}")
+        print(f"   Total students visible: {len(all_students)}")
+        
+        # Test each authorized branch
+        for branch in allowed_branches:
             params = {"branch_filter": branch}
-            success, response = self.run_test(f"Filter by {branch} branch", "GET", "admin/student-management", 200, params=params)
+            success, response = self.run_test(f"Test authorized {branch} branch access", "GET", "admin/students", 200, params=params)
             
             if success and response:
                 students = response.get('students', [])
-                allowed_branches = response.get('allowed_branches', [])
-                
                 print(f"   Branch {branch}: {len(students)} students found")
-                print(f"   Admin allowed branches: {allowed_branches}")
                 
-                # Check if the filtering is working correctly
-                if branch not in allowed_branches and len(students) > 0:
-                    print(f"   ⚠️  Found students in {branch} but admin not allowed access!")
-                elif branch in allowed_branches and len(students) == 0:
-                    print(f"   ℹ️  No students in {branch} branch (admin has access)")
-                elif branch in allowed_branches and len(students) > 0:
-                    print(f"   ✅ Found {len(students)} students in {branch} (admin has access)")
+                # Verify all returned students are from the requested branch
+                for student in students:
+                    if student.get('branch') != branch:
+                        print(f"   ❌ BUG: Found student from {student.get('branch')} in {branch} filter!")
+                        return False
+                
+                if students:
+                    print(f"   ✅ All {len(students)} students correctly filtered for {branch} branch")
         
         return True
+
+    def test_students_vs_student_management_consistency(self):
+        """Test that /admin/students and /admin/student-management return identical responses"""
+        if not self.admin_token:
+            print("❌ No admin token available for consistency test")
+            return False
+        
+        print("🔍 Testing endpoint consistency...")
+        
+        # Get response from /admin/students
+        success1, response1 = self.run_test("Get /admin/students response", "GET", "admin/students", 200)
+        if not success1:
+            return False
+        
+        # Get response from /admin/student-management  
+        success2, response2 = self.run_test("Get /admin/student-management response", "GET", "admin/student-management", 200)
+        if not success2:
+            return False
+        
+        # Compare key fields
+        students1 = response1.get('students', [])
+        students2 = response2.get('students', [])
+        branches1 = response1.get('allowed_branches', [])
+        branches2 = response2.get('allowed_branches', [])
+        perms1 = response1.get('user_permissions', [])
+        perms2 = response2.get('user_permissions', [])
+        
+        print(f"   /admin/students: {len(students1)} students, {len(branches1)} branches, {len(perms1)} permissions")
+        print(f"   /admin/student-management: {len(students2)} students, {len(branches2)} branches, {len(perms2)} permissions")
+        
+        # Check consistency
+        if len(students1) == len(students2) and branches1 == branches2 and len(perms1) == len(perms2):
+            print("   ✅ Both endpoints return consistent data")
+            return True
+        else:
+            print("   ❌ Endpoints return different data - inconsistency detected!")
+            return False
 
     def test_login_disabled_user(self):
         """Test login with disabled user account"""
