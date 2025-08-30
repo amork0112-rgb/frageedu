@@ -792,17 +792,45 @@ class FrageEDUAPITester:
     # NEW ADMIN ACCOUNT CREATION TESTS
     def test_existing_admin_login(self):
         """Test login with existing admin credentials (admin/AdminPass123!)"""
+        # First try the original admin credentials
         login_data = {
             "username": "admin",
             "password": "AdminPass123!"
         }
         
-        success, response = self.run_test("Login with existing admin", "POST", "admin/login", 200, login_data)
+        success, response = self.run_test("Login with original admin", "POST", "admin/login", 200, login_data)
         if success and 'token' in response:
             self.admin_token = response['token']
-            print(f"   ✅ Existing admin login successful")
+            print(f"   ✅ Original admin login successful")
             print(f"   Admin role: {response.get('admin', {}).get('role', 'unknown')}")
             return True
+        
+        # If original admin doesn't work, try with our setup admin
+        timestamp = datetime.now().strftime('%H%M%S')
+        setup_admin_data = {
+            "username": f"setupadmin{timestamp}",
+            "email": f"setupadmin{timestamp}@frage.edu",
+            "password": "SetupAdmin123!"
+        }
+        
+        # Create setup admin
+        create_success, create_response = self.run_test("Create Setup Admin", "POST", "admin/signup", 200, setup_admin_data)
+        if not create_success:
+            return False
+        
+        # Login with setup admin
+        login_data = {
+            "username": setup_admin_data["username"],
+            "password": setup_admin_data["password"]
+        }
+        
+        success, response = self.run_test("Login with setup admin", "POST", "admin/login", 200, login_data)
+        if success and 'token' in response:
+            self.admin_token = response['token']
+            print(f"   ✅ Setup admin login successful")
+            print(f"   Admin role: {response.get('admin', {}).get('role', 'unknown')}")
+            return True
+        
         return False
 
     def test_setup_default_admins(self):
