@@ -5865,6 +5865,244 @@ async def get_dashboard_stats(current_admin: AdminResponse = Depends(get_current
             "completion_rate": round((completed_admissions / total_admissions * 100) if total_admissions > 0 else 0, 1)
         }
     }
+# Parent Enrollment Form API
+@api_router.get("/parent/enroll-form")
+async def get_enroll_form_data(
+    studentId: str,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get pre-filled enrollment form data for student"""
+    try:
+        # Get parent info
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        # Get student info
+        student = await db.students.find_one({"id": studentId, "parent_id": parent["id"]})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found or not accessible")
+        
+        # Calculate age from birthdate
+        age = None
+        if student.get("birthdate"):
+            try:
+                from dateutil.parser import parse
+                birthdate = parse(student["birthdate"])
+                today = datetime.now(timezone.utc)
+                age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+            except:
+                age = None
+        
+        # Get existing student profile
+        profile = await db.student_profiles.find_one({"student_id": studentId})
+        if profile and '_id' in profile:
+            del profile['_id']
+        
+        # Clean data
+        if '_id' in student:
+            del student['_id']
+        if '_id' in parent:
+            del parent['_id']
+        
+        return EnrollFormResponse(
+            student={
+                "id": student["id"],
+                "name": student["name"],
+                "birthdate": student.get("birthdate"),
+                "age": age,
+                "photo_url": student.get("photo_url"),
+                "branch": student["branch"],
+                "program_subtype": student["program_subtype"]
+            },
+            parent={
+                "name": parent["name"],
+                "phone": parent["phone"]
+            },
+            profile=profile
+        )
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching enrollment form data: {str(e)}")
+
+@api_router.post("/parent/enroll-form")
+async def submit_enroll_form(
+    form_data: EnrollFormRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Submit enrollment form data"""
+    try:
+        # Get parent info
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        # Verify student ownership
+        student = await db.students.find_one({"id": form_data.student_id, "parent_id": parent["id"]})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found or not accessible")
+        
+        # Validate required fields
+        if not form_data.address1:
+            raise HTTPException(status_code=400, detail="주소(기본)는 필수입니다")
+        if not form_data.start_date:
+            raise HTTPException(status_code=400, detail="등원 시작일은 필수입니다")
+        if not form_data.consent_privacy:
+            raise HTTPException(status_code=400, detail="개인정보 수집·이용 동의는 필수입니다")
+        
+        # Validate shuttle fields
+        if form_data.use_shuttle:
+            if not form_data.pickup_spot or not form_data.dropoff_spot:
+                raise HTTPException(status_code=400, detail="차량 이용 시 승차/하차 지점은 필수입니다")
+        
+        # Create or update student profile
+        profile_data = {
+            "student_id": form_data.student_id,
+            "postal_code": form_data.postal_code,
+            "address1": form_data.address1,
+            "address2": form_data.address2,
+            "use_shuttle": form_data.use_shuttle,
+            "pickup_spot": form_data.pickup_spot if form_data.use_shuttle else None,
+            "dropoff_spot": form_data.dropoff_spot if form_data.use_shuttle else None,
+            "start_date": form_data.start_date,
+            "consent_privacy": form_data.consent_privacy,
+            "consent_privacy_at": datetime.now(timezone.utc),
+            "consent_signer": form_data.consent_signer,
+            "updated_at": datetime.now(timezone.utc)
+        }
+        
+        # Check if profile exists
+        existing_profile = await db.student_profiles.find_one({"student_id": form_data.student_id})
+        
+        if existing_profile:
+            # Update existing profile
+            await db.student_profiles.update_one(
+                {"student_id": form_data.student_id},
+                {"$set": profile_data}
+            )
+        else:
+            # Create new profile
+            profile = StudentProfile(**profile_data)
+            profile_dict = profile.dict() 
+            profile_dict['created_at'] = profile_dict['created_at'].isoformat()
+            profile_dict['updated_at'] = profile_dict['updated_at'].isoformat()
+            profile_dict['consent_privacy_at'] = profile_dict['consent_privacy_at'].isoformat()
+            await db.student_profiles.insert_one(profile_dict)
+        
+        return {"ok": True, "message": "입학 등록 폼이 성공적으로 제출되었습니다"}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error submitting enrollment form: {str(e)}")
+
+@api_router.post("/parent/students/{student_id}/photo")
+async def upload_student_photo(
+    student_id: str,
+    file: UploadFile = File(...),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Upload student photo"""
+    try:
+        # Get parent info
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        # Verify student ownership
+        student = await db.students.find_one({"id": student_id, "parent_id": parent["id"]})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found or not accessible")
+        
+        # Validate file
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="JPG/PNG 파일만 업로드 가능합니다")
+        
+        # Check file size (5MB limit)
+        contents = await file.read()
+        if len(contents) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="파일 크기는 5MB 이하여야 합니다")
+        
+        # Check file format
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="JPG/PNG 파일만 업로드 가능합니다")
+        
+        # Generate unique filename
+        file_extension = os.path.splitext(file.filename)[1].lower()
+        if file_extension not in ['.jpg', '.jpeg', '.png']:
+            file_extension = '.jpg'
+        
+        unique_filename = f"student_{student_id}_{uuid.uuid4()}{file_extension}"
+        
+        # Create directory structure
+        upload_dir = Path("uploads/students")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Save file
+        file_path = upload_dir / unique_filename
+        with open(file_path, "wb") as buffer:
+            buffer.write(contents)
+        
+        # Generate public URL
+        photo_url = f"/uploads/students/{unique_filename}"
+        
+        # Update student record
+        await db.students.update_one(
+            {"id": student_id},
+            {
+                "$set": {
+                    "photo_url": photo_url,
+                    "photo_updated_at": datetime.now(timezone.utc),
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        return PhotoUploadResponse(ok=True, photo_url=photo_url)
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error uploading photo: {str(e)}")
+
+# Korean Postal Code API Integration
+@api_router.get("/parent/address/search")
+async def search_address(query: str, current_user: UserResponse = Depends(get_current_user)):
+    """Search Korean addresses using Kakao API"""
+    try:
+        # Note: This is a mock implementation 
+        # In production, integrate with Kakao Address API
+        # https://developers.kakao.com/docs/latest/ko/local/dev-guide
+        
+        # Mock data for demonstration
+        mock_addresses = [
+            {
+                "address_name": "서울 강남구 테헤란로 146",
+                "road_address": "서울 강남구 테헤란로 146",
+                "postal_code": "06236",
+                "building_name": "현대벤처빌"
+            },
+            {
+                "address_name": "서울 강남구 역삼동 737",
+                "road_address": "서울 강남구 테헤란로 152",
+                "postal_code": "06236", 
+                "building_name": "강남파이낸스센터"
+            }
+        ]
+        
+        # Filter addresses that contain the query
+        filtered_addresses = [
+            addr for addr in mock_addresses
+            if query.lower() in addr["address_name"].lower() or query.lower() in addr["road_address"].lower()
+        ]
+        
+        return {"addresses": filtered_addresses}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching addresses: {str(e)}")
 
 # Include the router in the main app
 app.include_router(api_router)
