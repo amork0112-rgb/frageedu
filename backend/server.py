@@ -384,17 +384,43 @@ async def signup(user_data: UserCreate):
     user = User(
         email=user_data.email,
         phone=user_data.phone,
-        parent_name=user_data.parent_name,
-        student_name=user_data.student_name,
+        name=user_data.name,
         password_hash=hash_password(user_data.password)
     )
     
     # Insert user
-    await db.users.insert_one(user.dict())
+    user_dict = user.dict()
+    user_dict['created_at'] = user_dict['created_at'].isoformat()
+    await db.users.insert_one(user_dict)
+    
+    # Create parent record
+    parent = Parent(
+        user_id=user.id,
+        name=user_data.name,
+        phone=user_data.phone,
+        email=user_data.email,
+        branch=user_data.branch,
+        household_token=user.household_token
+    )
+    
+    parent_dict = parent.dict()
+    parent_dict['created_at'] = parent_dict['created_at'].isoformat()
+    await db.parents.insert_one(parent_dict)
+    
+    # Create student record
+    student = Student(
+        parent_id=parent.id,
+        name=user_data.student_name,
+        grade="1"  # Default grade, can be updated later
+    )
+    
+    await db.students.insert_one(student.dict())
     
     # Create admission data
     admission = AdmissionData(household_token=user.household_token)
-    await db.admission_data.insert_one(admission.dict())
+    admission_dict = admission.dict()
+    admission_dict['updated_at'] = admission_dict['updated_at'].isoformat()
+    await db.admission_data.insert_one(admission_dict)
     
     # Create JWT token
     token = create_jwt_token(user.id, user.household_token)
