@@ -257,18 +257,18 @@ backend:
 
   - task: "Implement GET /admin/audit for audit log viewing"
     implemented: true
-    working: false
+    working: "NA"
     file: "backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Added audit logs endpoint with filtering by targetId and action type, pagination, and actor name enrichment."
       - working: false
         agent: "testing"
-        comment: "❌ FAILED - 500 Internal Server Error. Same MongoDB ObjectId serialization issue as member details endpoint. Audit logs contain ObjectId fields that can't be JSON serialized. Need to convert ObjectIds to strings in audit log records."
+        comment: "ObjectId serialization error causing 500 response"
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed ObjectId serialization by removing _id fields from audit log documents before JSON response. Added proper data cleaning for all audit log entries."
 
 frontend:
 
