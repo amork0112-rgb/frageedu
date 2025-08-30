@@ -529,15 +529,24 @@ class FrageEDUAPITester:
         return success
 
     def test_admin_students_endpoint(self):
-        """Test /admin/students endpoint (should be /admin/student-management)"""
+        """Test NEW /admin/students endpoint - should now exist and work correctly"""
         if not self.admin_token:
             print("❌ No admin token available for students endpoint test")
             return False
         
-        # Test the incorrect endpoint first
-        success, response = self.run_test("Test /admin/students (Expected 404)", "GET", "admin/students", 404)
+        # Test the NEW /admin/students endpoint - should now return 200, not 404
+        success, response = self.run_test("Test NEW /admin/students endpoint", "GET", "admin/students", 200)
         if success:
-            print("✅ Confirmed /admin/students endpoint does not exist")
+            print("✅ NEW /admin/students endpoint exists and works!")
+            if response:
+                students = response.get('students', [])
+                allowed_branches = response.get('allowed_branches', [])
+                permissions = response.get('user_permissions', [])
+                print(f"   Students found: {len(students)}")
+                print(f"   Allowed branches: {allowed_branches}")
+                print(f"   Permissions: {len(permissions)}")
+        else:
+            print("❌ NEW /admin/students endpoint failed")
         
         return success
 
