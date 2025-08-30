@@ -445,11 +445,13 @@ class FrageEDUAPITester:
             print("❌ No admin token or test user ID available for bulk notify test")
             return False
         
-        # The endpoint expects user_ids as a list and message as separate parameters
-        notify_data = [self.test_user_id]  # Just the list of user IDs
+        # The endpoint expects user_ids and message as separate parameters
+        notify_data = {
+            "user_ids": [self.test_user_id],
+            "message": "테스트 알림 메시지입니다."
+        }
         
-        # Add message as query parameter or in request body - checking the backend code
-        success, response = self.run_test("Bulk Notify Members", "POST", "admin/members/bulk/notify", 200, notify_data, params={"message": "테스트 알림 메시지입니다."})
+        success, response = self.run_test("Bulk Notify Members", "POST", "admin/members/bulk/notify", 200, notify_data)
         
         return success
 
