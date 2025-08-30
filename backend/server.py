@@ -704,7 +704,6 @@ class ClassAssignmentResponse(BaseModel):
 class ParentDashboardResponse(BaseModel):
     parent_info: Dict[str, Any]
     students: List[Dict[str, Any]]
-    test_schedules: List[TestScheduleResponse]
     test_results: List[TestResultResponse]
     class_assignments: List[ClassAssignmentResponse]
     enrollment_status: str  # new, test_scheduled, test_taken, enrolled, active
