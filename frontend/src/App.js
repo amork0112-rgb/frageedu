@@ -2021,7 +2021,6 @@ function App() {
         <Routes>
           <Route path="/" element={<Homepage />} />
           <Route path="/programs" element={<Programs />} />
-          <Route path="/community" element={<Community />} />
           <Route path="/news" element={<News />} />
           <Route path="/market" element={<Market />} />
           <Route path="/admissions" element={<AdmissionsPage />} />
