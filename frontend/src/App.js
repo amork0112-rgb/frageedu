@@ -933,7 +933,7 @@ function App() {
           <Route path="/admissions" element={<AdmissionsPortal />} />
           <Route path="/signup" element={<Signup onSignup={handleSignup} />} />
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
-          <Route path="/entrance/step" element={<EntrancePage />} />
+
           
           {/* Admission Portal Pages - keeping existing functionality */}
           <Route path="/dashboard" element={
