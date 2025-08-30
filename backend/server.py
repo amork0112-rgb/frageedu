@@ -94,6 +94,24 @@ class ClassAssignment(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# Student Status Management Models
+class StudentStatusUpdate(BaseModel):
+    status: str
+    notes: Optional[str] = None
+
+class ClassAssignmentRequest(BaseModel):
+    class_id: str
+    class_name: str
+    homeroom_teacher: str
+    weekday: str
+    time_start: str
+    time_end: str
+    classroom: str
+    level: Optional[str] = None
+
+class StudentApprovalRequest(BaseModel):
+    notes: Optional[str] = None
+
 class ExamResult(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     student_id: str
