@@ -102,9 +102,81 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the new admin account creation functionality with specific roles. PRIORITY TESTING: 1) Setup default admin accounts, 2) Test admin creation with roles, 3) Verify login credentials for each new admin account, 4) Test role-based access and RBAC filtering."
+user_problem_statement: "Test the parent enrollment form system backend APIs. PRIORITY TESTING: 1) GET /api/parent/enroll-form - 입학 등록 폼 데이터 조회, 2) POST /api/parent/enroll-form - 입학 등록 폼 제출, 3) POST /api/parent/students/{student_id}/photo - 학생 사진 업로드, 4) GET /api/parent/address/search - 한국 주소 검색"
 
 backend:
+  - task: "GET /api/parent/enroll-form - 입학 등록 폼 데이터 조회"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ GET PARENT ENROLL FORM ENDPOINT WORKING: Successfully tested /api/parent/enroll-form endpoint (lines 5869-5928). Endpoint requires studentId query parameter and parent authentication. Returns proper student info (id, name, birthdate, age, photo_url, branch, program_subtype), parent info (name, phone), and existing profile data. Age calculation from birthdate works correctly. Student ownership verification implemented - parent can only access their own students. Authentication required and working properly."
+
+  - task: "POST /api/parent/enroll-form - 입학 등록 폼 제출"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ POST PARENT ENROLL FORM ENDPOINT WORKING: Successfully tested /api/parent/enroll-form endpoint (lines 5930-5999). Endpoint accepts enrollment form data and validates required fields (address1, start_date, consent_privacy). Shuttle validation works correctly - when use_shuttle=true, pickup_spot and dropoff_spot are required. Creates or updates StudentProfile record with all form data including consent timestamps. Student ownership verification prevents unauthorized access. Returns success message in Korean upon successful submission."
+
+  - task: "POST /api/parent/students/{student_id}/photo - 학생 사진 업로드"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ STUDENT PHOTO UPLOAD ENDPOINT WORKING: Successfully tested /api/parent/students/{student_id}/photo endpoint (lines 6001-6069). Endpoint validates file requirements (image/* content type, JPG/PNG format, 5MB size limit). Student ownership verification implemented. File upload functionality creates unique filenames and saves to uploads/students directory. Updates Student model with photo_url and photo_updated_at timestamp. Proper error handling for invalid file types and missing files. Authentication required and working."
+
+  - task: "GET /api/parent/address/search - 한국 주소 검색"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PARENT ADDRESS SEARCH ENDPOINT WORKING: Successfully tested /api/parent/address/search endpoint (lines 6072-6100). Currently implements mock Korean address data for demonstration. Returns properly structured address objects with address_name, road_address, postal_code, and building_name fields. Query parameter filtering works correctly. Authentication required. Response wrapped in 'addresses' array. Ready for integration with actual Kakao Address API in production."
+
+  - task: "Parent authentication and authorization system"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ PARENT AUTHENTICATION SYSTEM WORKING: All parent enrollment form endpoints properly implement JWT authentication using get_current_user dependency. Student ownership verification ensures parents can only access their own students' data. Unauthorized access returns 403 Forbidden. Parent signup process creates User, Parent, and Student records correctly with proper relationships. JWT tokens generated and validated properly for parent role users."
+
+  - task: "Form validation and error handling"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ FORM VALIDATION WORKING: Comprehensive validation implemented across all endpoints. Required field validation for address1, start_date, consent_privacy in enrollment form. Conditional validation for shuttle service (pickup_spot/dropoff_spot required when use_shuttle=true). File upload validation for image type, size, and format. Proper error messages in Korean for user-facing errors. HTTP status codes correctly implemented (400 for validation errors, 404 for not found, 403 for unauthorized)."
+
   - task: "Setup default admin accounts via /admin/setup-default-admins endpoint"
     implemented: true
     working: true
