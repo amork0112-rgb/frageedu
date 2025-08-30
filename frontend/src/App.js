@@ -2543,70 +2543,83 @@ const WelcomeAdmissionGuide = () => {
             </div>
 
             {/* Next Steps for New Members - Branch Specific */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-              {/* Consultation Booking - Common for all */}
-              <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-blue-50 border-blue-200">
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center shadow-md">
-                        <Phone className="w-6 h-6 text-white" />
+            {currentBranch.name === '유치부' ? (
+              // Kindergarten - No booking steps, just welcome message
+              <div className="mb-12">
+                <Card className="border-2 bg-gradient-to-br from-pink-50 to-purple-50 border-pink-200">
+                  <CardContent className="p-8 text-center">
+                    <div className="mb-6">
+                      <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Heart className="w-8 h-8 text-white" />
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                        1단계. 상담 예약
-                      </h3>
-                      <p className="text-sm text-blue-700 mb-4">
-                        전화 또는 방문 상담을 통해 {currentBranch.name} 프로그램을 안내받으세요
-                      </p>
-                      <div className="space-y-2 mb-4 text-sm text-blue-600">
-                        <p>📞 전화: 053-754-0577</p>
-                        <p>📧 이메일: frage0577@gmail.com</p>
-                        <p>🕐 상담시간: 평일 9:00-18:00</p>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                      유치부에 오신 것을 환영합니다! 🎈
+                    </h3>
+                    <p className="text-lg text-gray-700 mb-6">
+                      아이들의 첫 영어 경험이 즐겁고 자연스럽게 이루어질 수 있도록<br />
+                      놀이 중심의 맞춤형 프로그램을 제공합니다.
+                    </p>
+                    <div className="bg-white rounded-lg p-6 shadow-lg mb-6">
+                      <h4 className="text-lg font-semibold text-pink-800 mb-3">🌟 유치부 특별 프로그램</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">🎵</div>
+                          <p className="font-medium">노래와 율동</p>
+                          <p className="text-gray-600">영어 동요로 자연스러운 학습</p>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">🎨</div>
+                          <p className="font-medium">창의 활동</p>
+                          <p className="text-gray-600">만들기, 그리기로 표현력 향상</p>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">📚</div>
+                          <p className="font-medium">스토리 텔링</p>
+                          <p className="text-gray-600">재미있는 이야기로 상상력 개발</p>
+                        </div>
                       </div>
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                        <Phone className="w-4 h-4 mr-2" />
-                        전화 상담 예약
-                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Branch Specific Second Step */}
-              {currentBranch.name === '유치부' ? (
-                // Kindergarten - Level Test Consultation
-                <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-pink-50 border-pink-200">
+                    <p className="text-gray-600">
+                      자세한 상담은 아래 연락처로 문의해 주세요
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              // Junior/Middle - Keep existing booking cards  
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                {/* Consultation Booking - Only for non-kinder */}
+                <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-blue-50 border-blue-200">
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
-                        <div className="w-12 h-12 rounded-full bg-pink-600 flex items-center justify-center shadow-md">
-                          <Users className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center shadow-md">
+                          <Phone className="w-6 h-6 text-white" />
                         </div>
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-pink-900 mb-2">
-                          2단계. 레벨테스트 상담
+                        <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                          1단계. 상담 예약
                         </h3>
-                        <p className="text-sm text-pink-700 mb-4">
-                          유치부는 재미있는 놀이식 레벨테스트를 통해 적정 반을 배정합니다
+                        <p className="text-sm text-blue-700 mb-4">
+                          전화 또는 방문 상담을 통해 {currentBranch.name} 프로그램을 안내받으세요
                         </p>
-                        <div className="space-y-2 mb-4 text-sm text-pink-600">
-                          <p>🎯 놀이식 영어 실력 측정</p>
-                          <p>👶 연령별 맞춤 테스트</p>
-                          <p>🎨 아이가 좋아하는 활동 중심</p>
+                        <div className="space-y-2 mb-4 text-sm text-blue-600">
+                          <p>📞 전화: 053-754-0577</p>
+                          <p>📧 이메일: frage0577@gmail.com</p>
+                          <p>🕐 상담시간: 평일 9:00-18:00</p>
                         </div>
-                        <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white">
-                          <Users className="w-4 h-4 mr-2" />
-                          레벨테스트 상담
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                          <Phone className="w-4 h-4 mr-2" />
+                          전화 상담 예약
                         </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ) : (
-                // Junior/Middle - Entrance Exam Reservation
+
+                {/* Entrance Exam Reservation - Only for junior/middle */}
                 <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-green-50 border-green-200">
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -2638,8 +2651,8 @@ const WelcomeAdmissionGuide = () => {
                     </div>
                   </CardContent>
                 </Card>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Branch Specific Information */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
