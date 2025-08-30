@@ -4814,6 +4814,118 @@ async def init_sample_data():
         raise HTTPException(status_code=500, detail=f"Error initializing sample data: {str(e)}")
 
 # Admin Routes
+@api_router.post("/admin/create-with-role")
+async def create_admin_with_role(admin_data: AdminCreateWithRole, current_admin: AdminResponse = Depends(get_current_admin)):
+    """Create admin account with specific role (super_admin only)"""
+    try:
+        # Only super_admin can create admins with specific roles
+        if current_admin.role not in ["admin", "super_admin"]:  # Temporarily allow admin for setup
+            raise HTTPException(status_code=403, detail="Only super admin can create admin accounts with roles")
+        
+        # Validate role
+        valid_roles = ["admin", "super_admin", "kinder_admin", "junior_admin", "middle_admin"]
+        if admin_data.role not in valid_roles:
+            raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {valid_roles}")
+        
+        # Check if admin already exists
+        existing_admin = await db.admins.find_one({"$or": [{"username": admin_data.username}, {"email": admin_data.email}]})
+        if existing_admin:
+            raise HTTPException(status_code=400, detail="Admin already exists")
+        
+        # Create admin with specified role
+        admin = Admin(
+            username=admin_data.username,
+            email=admin_data.email,
+            password_hash=hash_password(admin_data.password),
+            role=admin_data.role
+        )
+        
+        admin_dict = admin.dict()
+        admin_dict['created_at'] = admin_dict['created_at'].isoformat()
+        admin_dict['last_login'] = None
+        
+        # Insert admin
+        await db.admins.insert_one(admin_dict)
+        
+        # Log the creation
+        await log_audit(
+            current_admin.id,
+            "CREATE_ADMIN",
+            "Admin",
+            admin.id,
+            {"role": admin_data.role, "username": admin_data.username}
+        )
+        
+        return {
+            "message": f"Admin '{admin_data.username}' created successfully with role '{admin_data.role}'",
+            "admin": AdminResponse(**admin_dict)
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error creating admin: {str(e)}")
+
+@api_router.post("/admin/setup-default-admins")
+async def setup_default_admin_accounts(current_admin: AdminResponse = Depends(get_current_admin)):
+    """Create default admin accounts for each role type (setup only)"""
+    try:
+        # Only allow admin or super_admin to run setup
+        if current_admin.role not in ["admin", "super_admin"]:
+            raise HTTPException(status_code=403, detail="Only admin can setup default accounts")
+        
+        default_admins = [
+            {"username": "super_admin", "email": "super@frage.edu", "password": "Super123!", "role": "super_admin"},
+            {"username": "kinder_admin", "email": "kinder@frage.edu", "password": "Kinder123!", "role": "kinder_admin"},
+            {"username": "junior_admin", "email": "junior@frage.edu", "password": "Junior123!", "role": "junior_admin"},
+            {"username": "middle_admin", "email": "middle@frage.edu", "password": "Middle123!", "role": "middle_admin"}
+        ]
+        
+        created_admins = []
+        skipped_admins = []
+        
+        for admin_data in default_admins:
+            # Check if admin already exists
+            existing = await db.admins.find_one({"username": admin_data["username"]})
+            if existing:
+                skipped_admins.append(admin_data["username"])
+                continue
+            
+            # Create admin
+            admin = Admin(
+                username=admin_data["username"],
+                email=admin_data["email"],
+                password_hash=hash_password(admin_data["password"]),
+                role=admin_data["role"]
+            )
+            
+            admin_dict = admin.dict()
+            admin_dict['created_at'] = admin_dict['created_at'].isoformat()
+            admin_dict['last_login'] = None
+            
+            await db.admins.insert_one(admin_dict)
+            created_admins.append({"username": admin_data["username"], "role": admin_data["role"]})
+            
+            # Log the creation
+            await log_audit(
+                current_admin.id,
+                "SETUP_DEFAULT_ADMIN",
+                "Admin",
+                admin.id,
+                {"role": admin_data["role"], "username": admin_data["username"]}
+            )
+        
+        return {
+            "message": f"Setup complete. Created {len(created_admins)} admin accounts.",
+            "created_admins": created_admins,
+            "skipped_admins": skipped_admins
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error setting up default admins: {str(e)}")
+
 @api_router.post("/admin/signup")
 async def create_admin(admin_data: AdminCreate):
     # Check if admin already exists
