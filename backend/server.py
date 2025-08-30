@@ -383,6 +383,55 @@ class ParentDashboardResponse(BaseModel):
     class_assignments: List[ClassAssignmentResponse]
     enrollment_status: str  # new, test_scheduled, test_taken, enrolled, active
 
+# Frage Market Request/Response Models
+class ProductResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    price: float
+    category: str
+    subcategory: Optional[str]
+    brand: Optional[str]
+    size_options: List[str]
+    color_options: List[str]
+    images: List[str]
+    stock_quantity: int
+    is_available: bool
+    is_featured: bool
+    tags: List[str]
+    specifications: Optional[Dict[str, str]]
+
+class AddToCartRequest(BaseModel):
+    product_id: str
+    quantity: int = 1
+    selected_size: Optional[str] = None
+    selected_color: Optional[str] = None
+
+class UpdateCartRequest(BaseModel):
+    quantity: int
+    selected_size: Optional[str] = None
+    selected_color: Optional[str] = None
+
+class CartResponse(BaseModel):
+    items: List[Dict[str, Any]]
+    total_items: int
+    total_amount: float
+
+class CreateOrderRequest(BaseModel):
+    shipping_address: Dict[str, str]
+    contact_info: Dict[str, str]
+    payment_method: str
+    notes: Optional[str] = None
+
+class OrderResponse(BaseModel):
+    id: str
+    order_number: str
+    items: List[Dict[str, Any]]
+    total_amount: float
+    status: str
+    payment_status: str
+    created_at: datetime
+
 # Utility functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
