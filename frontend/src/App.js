@@ -55,16 +55,14 @@ const Header = () => {
     <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/logo.png" 
-              alt="Frage EDU Logo" 
-              className="h-12 w-auto"
-            />
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Frage EDU</h1>
-              <p className="text-xs text-gray-500">생각하는 영어교육</p>
-            </div>
+          <div className="flex items-center">
+            <a href="/" className="cursor-pointer">
+              <img 
+                src="/logo.png" 
+                alt="Frage EDU Logo" 
+                className="h-12 w-auto hover:opacity-80 transition-opacity"
+              />
+            </a>
           </div>
 
           {/* Desktop Navigation */}
