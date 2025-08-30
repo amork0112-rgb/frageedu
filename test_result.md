@@ -155,3 +155,5 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: "Starting investigation of the /admin/students API issue. Found that the current endpoint is /admin/student-management with RBAC filtering already implemented. Need to test if this endpoint works correctly or if a separate /admin/students endpoint needs to be created. Will verify RBAC data, student data existence, and API functionality."
+  - agent: "testing"
+    message: "INVESTIGATION COMPLETE: Found the root cause of the /admin/students API issue. The problem is NOT that the API returns null/empty data - the API is working and returning student data correctly. The issues are: 1) Wrong endpoint name - there is no /admin/students endpoint, only /admin/student-management. 2) MAJOR BUG in branch filtering logic - when admin requests a branch they don't have access to (e.g., kinder_admin requesting junior branch), the API incorrectly returns students from their allowed branches instead of returning empty results. 3) RBAC initialization requires super_admin role but all created admins default to kinder_admin. The API itself works fine and returns proper student data with correct RBAC permissions."
