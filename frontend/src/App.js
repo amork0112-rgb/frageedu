@@ -4019,7 +4019,13 @@ function App() {
           <Route path="/" element={<Homepage />} />
           <Route path="/programs" element={<Programs />} />
           <Route path="/news" element={<News />} />
-          <Route path="/market" element={<Market />} />
+          
+          {/* Protected Market Route - Login Required */}
+          <Route path="/market" element={
+            <TokenAuthWrapper>
+              <Market />
+            </TokenAuthWrapper>
+          } />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
