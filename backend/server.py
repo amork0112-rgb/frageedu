@@ -2599,6 +2599,276 @@ async def acknowledge_notices(
             raise e
         raise HTTPException(status_code=500, detail=f"Error acknowledging notices: {str(e)}")
 
+@api_router.post("/admin/init-rbac")
+async def init_rbac_system(current_admin: AdminResponse = Depends(get_current_admin)):
+    """Initialize RBAC system with default permissions and roles"""
+    try:
+        if current_admin.role != "admin":  # Temporary check, will be super_admin later
+            raise HTTPException(status_code=403, detail="Only super admin can initialize RBAC system")
+        
+        result = await initialize_rbac_system()
+        return {"message": result}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error initializing RBAC: {str(e)}")
+
+@api_router.get("/admin/student-management")
+async def get_student_management_list(
+    current_admin: AdminResponse = Depends(get_current_admin),
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    branch_filter: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    grade_filter: Optional[str] = None
+):
+    """Get students list with admin role-based filtering"""
+    try:
+        # Check permission
+        if not await has_permission(current_admin.id, current_admin.role, "can_view_student"):
+            raise HTTPException(status_code=403, detail="Permission denied: cannot view students")
+        
+        # Get admin's allowed branches
+        access_info = await filter_students_by_admin_access(current_admin.id, current_admin.role)
+        allowed_branches = access_info["allowed_branches"]
+        
+        # Build query
+        query = {}
+        
+        # Apply branch filtering based on admin access
+        if branch_filter and branch_filter in allowed_branches:
+            query["branch"] = branch_filter
+        else:
+            query["branch"] = {"$in": allowed_branches}
+        
+        # Apply additional filters
+        if status_filter:
+            query["status"] = status_filter
+        if grade_filter:
+            query["grade"] = grade_filter
+        
+        # Search functionality
+        if search:
+            search_query = {
+                "$or": [
+                    {"name": {"$regex": search, "$options": "i"}},
+                    {"parent_name": {"$regex": search, "$options": "i"}},
+                    {"parent_phone": {"$regex": search, "$options": "i"}},
+                    {"parent_email": {"$regex": search, "$options": "i"}}
+                ]
+            }
+            query = {"$and": [query, search_query]}
+        
+        # Get students with pagination
+        skip = (page - 1) * limit
+        
+        # Complex aggregation to join student, parent, and class data
+        pipeline = [
+            {"$match": query},
+            {
+                "$lookup": {
+                    "from": "parents",
+                    "localField": "parent_id",
+                    "foreignField": "id",
+                    "as": "parent_info"
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "class_placements",
+                    "localField": "id",
+                    "foreignField": "student_id",
+                    "as": "class_info"
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "student_enrollment_progress",
+                    "localField": "id",
+                    "foreignField": "student_id",
+                    "as": "progress_info"
+                }
+            },
+            {
+                "$addFields": {
+                    "parent_info": {"$arrayElemAt": ["$parent_info", 0]},
+                    "class_info": {"$arrayElemAt": ["$class_info", 0]},
+                    "progress_info": {"$arrayElemAt": ["$progress_info", 0]}
+                }
+            },
+            {"$sort": {"created_at": -1}},
+            {"$skip": skip},
+            {"$limit": limit}
+        ]
+        
+        students_cursor = db.students.aggregate(pipeline)
+        students = await students_cursor.to_list(limit)
+        
+        # Get total count
+        total_count = await db.students.count_documents(query)
+        
+        # Format response
+        formatted_students = []
+        for student in students:
+            if '_id' in student:
+                del student['_id']
+            
+            parent_info = student.get("parent_info", {})
+            class_info = student.get("class_info", {})
+            progress_info = student.get("progress_info", {})
+            
+            # Calculate enrollment progress
+            completed_steps = len(progress_info.get("completed_steps", []))
+            total_steps = 5  # Default flow steps
+            progress_percentage = (completed_steps / total_steps) * 100 if total_steps > 0 else 0
+            
+            # Determine payment status (placeholder - integrate with actual payment system)
+            payment_status = "paid"  # Default
+            
+            # Calculate attendance rate (placeholder)
+            attendance_rate = 95.0  # Default
+            
+            formatted_student = StudentManagement(
+                id=student["id"],
+                name=student["name"],
+                grade=student.get("grade", ""),
+                birthdate=student.get("birthdate"),
+                branch=student.get("branch", ""),
+                program_subtype=student.get("program_subtype", "regular"),
+                status=student.get("status", "active"),
+                parent_name=parent_info.get("name", ""),
+                parent_phone=parent_info.get("phone", ""),
+                parent_email=parent_info.get("email", ""),
+                class_name=class_info.get("class_name"),
+                teacher_name=class_info.get("teacher_name"),
+                attendance_rate=attendance_rate,
+                payment_status=payment_status,
+                last_attendance="2025-08-30",  # Placeholder
+                enrollment_progress=progress_percentage,
+                created_at=datetime.fromisoformat(student["created_at"]) if "created_at" in student else datetime.now(timezone.utc)
+            )
+            formatted_students.append(formatted_student)
+        
+        # Get user permissions
+        user_permissions = await get_user_permissions(current_admin.id, current_admin.role)
+        permission_codes = [p.code for p in user_permissions if p.has_permission]
+        
+        return StudentManagementResponse(
+            students=formatted_students,
+            pagination={
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "total_pages": (total_count + limit - 1) // limit
+            },
+            allowed_branches=allowed_branches,
+            user_permissions=permission_codes
+        )
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching student management list: {str(e)}")
+
+@api_router.get("/admin/permissions/user/{admin_user_id}")
+async def get_admin_user_permissions(
+    admin_user_id: str,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Get permissions for specific admin user (super admin only)"""
+    try:
+        if current_admin.role != "admin":  # Will be super_admin later
+            raise HTTPException(status_code=403, detail="Only super admin can view user permissions")
+        
+        # Get target admin user
+        target_admin = await db.admins.find_one({"id": admin_user_id})
+        if not target_admin:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        
+        # Get permissions and branches
+        permissions = await get_user_permissions(admin_user_id, target_admin["role"])
+        allowed_branches = await get_allowed_branches(admin_user_id)
+        
+        return AdminUserResponse(
+            id=target_admin["id"],
+            username=target_admin["username"],
+            email=target_admin["email"],
+            role=target_admin["role"],
+            is_active=target_admin.get("is_active", True),
+            allowed_branches=allowed_branches,
+            permissions=permissions,
+            last_login=target_admin.get("last_login"),
+            created_at=datetime.fromisoformat(target_admin["created_at"])
+        )
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching admin user permissions: {str(e)}")
+
+@api_router.post("/admin/permissions/set-branches")
+async def set_admin_user_branches(
+    request: Dict[str, Any],
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Set allowed branches for an admin user (super admin only)"""
+    try:
+        if current_admin.role != "admin":  # Will be super_admin later
+            raise HTTPException(status_code=403, detail="Only super admin can set user branches")
+        
+        admin_user_id = request.get("admin_user_id")
+        branches = request.get("branches", [])
+        
+        if not admin_user_id:
+            raise HTTPException(status_code=400, detail="admin_user_id is required")
+        
+        # Validate branches
+        valid_branches = ["kinder", "junior", "middle", "kinder_single"]
+        invalid_branches = [b for b in branches if b not in valid_branches]
+        if invalid_branches:
+            raise HTTPException(status_code=400, detail=f"Invalid branches: {invalid_branches}")
+        
+        await set_admin_branches(admin_user_id, branches, current_admin.id)
+        
+        return {"message": "Branches updated successfully", "branches": branches}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error setting admin branches: {str(e)}")
+
+@api_router.post("/admin/permissions/set-permission")
+async def set_admin_user_permission(
+    request: Dict[str, Any],
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Set specific permission for an admin user (super admin only)"""
+    try:
+        if current_admin.role != "admin":  # Will be super_admin later
+            raise HTTPException(status_code=403, detail="Only super admin can set user permissions")
+        
+        admin_user_id = request.get("admin_user_id")
+        permission_code = request.get("permission_code")
+        value = request.get("value")
+        
+        if not all([admin_user_id, permission_code, value is not None]):
+            raise HTTPException(status_code=400, detail="admin_user_id, permission_code, and value are required")
+        
+        # Validate permission exists
+        permission = await db.permissions.find_one({"code": permission_code})
+        if not permission:
+            raise HTTPException(status_code=400, detail=f"Permission not found: {permission_code}")
+        
+        await set_admin_permission(admin_user_id, permission_code, value, current_admin.id)
+        
+        return {"message": "Permission updated successfully", "permission": permission_code, "value": value}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error setting admin permission: {str(e)}")
+
 @api_router.post("/admin/students/{student_id}/update-status")
 async def update_student_enrollment_status(
     student_id: str,
