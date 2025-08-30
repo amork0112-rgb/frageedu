@@ -5179,9 +5179,9 @@ const AdminStudentManagement = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [gradeFilter, setGradeFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [gradeFilter, setGradeFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20);
   const [selectedStudents, setSelectedStudents] = useState([]);
