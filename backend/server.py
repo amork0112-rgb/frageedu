@@ -622,6 +622,269 @@ async def log_audit(actor_user_id: str, action: str, target_type: str, target_id
     
     await db.audit_logs.insert_one(audit_dict)
 
+# Flow Management Utility Functions
+async def initialize_default_flows():
+    """Initialize default enrollment flows"""
+    default_flows = [
+        {
+            "flow_key": "kinder_regular",
+            "name": "정규 킨더 정규입학",
+            "description": "설명회 → 입학원서 → 입학금 납부 → 동의서/신청서 → 반배정",
+            "branch": "kinder",
+            "program_type": "regular",
+            "steps": [
+                {"key": "seminar", "name": "설명회", "order": 1, "required": True, "description": "입학 설명회 참석"},
+                {"key": "form", "name": "입학원서", "order": 2, "required": True, "description": "입학원서 작성 및 제출"},
+                {"key": "entrance_payment", "name": "입학금 납부", "order": 3, "required": True, "description": "입학금 납부"},
+                {"key": "consent", "name": "동의서/신청서", "order": 4, "required": True, "description": "각종 동의서 및 신청서 작성"},
+                {"key": "placement", "name": "반배정", "order": 5, "required": True, "description": "반 배정 완료"}
+            ]
+        },
+        {
+            "flow_key": "kinder_transfer",
+            "name": "정규 킨더 편입",
+            "description": "상담/테스트 → 입학원서 → 입학금 납부 → 동의서/신청서 → 반배정",
+            "branch": "kinder",
+            "program_type": "transfer",
+            "steps": [
+                {"key": "consultation", "name": "상담/테스트", "order": 1, "required": True, "description": "개별 상담 및 레벨 테스트"},
+                {"key": "form", "name": "입학원서", "order": 2, "required": True, "description": "입학원서 작성 및 제출"},
+                {"key": "entrance_payment", "name": "입학금 납부", "order": 3, "required": True, "description": "입학금 납부"},
+                {"key": "consent", "name": "동의서/신청서", "order": 4, "required": True, "description": "각종 동의서 및 신청서 작성"},
+                {"key": "placement", "name": "반배정", "order": 5, "required": True, "description": "반 배정 완료"}
+            ]
+        },
+        {
+            "flow_key": "junior",
+            "name": "프라게 주니어",
+            "description": "상담/테스트 → 반배정 → 수업료 납부 → 동의서/신청서 → 입학",
+            "branch": "junior",
+            "program_type": "regular",
+            "steps": [
+                {"key": "consultation", "name": "상담/테스트", "order": 1, "required": True, "description": "개별 상담 및 레벨 테스트"},
+                {"key": "placement", "name": "반배정", "order": 2, "required": True, "description": "반 배정"},
+                {"key": "tuition_payment", "name": "수업료 납부", "order": 3, "required": True, "description": "수업료 납부"},
+                {"key": "consent", "name": "동의서/신청서", "order": 4, "required": True, "description": "각종 동의서 및 신청서 작성"},
+                {"key": "enrollment", "name": "입학 완료", "order": 5, "required": True, "description": "입학 절차 완료"}
+            ]
+        },
+        {
+            "flow_key": "middle",
+            "name": "프라디스 중등",
+            "description": "상담/테스트 → 반배정 → 수업료 납부 → 동의서/신청서 → 입학",
+            "branch": "middle",
+            "program_type": "regular",
+            "steps": [
+                {"key": "consultation", "name": "상담/테스트", "order": 1, "required": True, "description": "개별 상담 및 레벨 테스트"},
+                {"key": "placement", "name": "반배정", "order": 2, "required": True, "description": "반 배정"},
+                {"key": "tuition_payment", "name": "수업료 납부", "order": 3, "required": True, "description": "수업료 납부"},
+                {"key": "consent", "name": "동의서/신청서", "order": 4, "required": True, "description": "각종 동의서 및 신청서 작성"},
+                {"key": "enrollment", "name": "입학 완료", "order": 5, "required": True, "description": "입학 절차 완료"}
+            ]
+        },
+        {
+            "flow_key": "junior_single",
+            "name": "유치 단과",
+            "description": "상담/테스트 → 반배정 → 수업료 납부 → 동의서/신청서 → 입학",
+            "branch": "junior",
+            "program_type": "single",
+            "steps": [
+                {"key": "consultation", "name": "상담/테스트", "order": 1, "required": True, "description": "개별 상담 및 레벨 테스트"},
+                {"key": "placement", "name": "반배정", "order": 2, "required": True, "description": "반 배정"},
+                {"key": "tuition_payment", "name": "수업료 납부", "order": 3, "required": True, "description": "수업료 납부"},
+                {"key": "consent", "name": "동의서/신청서", "order": 4, "required": True, "description": "각종 동의서 및 신청서 작성"},
+                {"key": "enrollment", "name": "입학 완료", "order": 5, "required": True, "description": "입학 절차 완료"}
+            ]
+        }
+    ]
+    
+    # Check if flows already exist
+    existing_flows = await db.enrollment_flows.count_documents({})
+    if existing_flows > 0:
+        return f"{existing_flows} flows already exist"
+    
+    # Insert flows
+    for flow_data in default_flows:
+        flow = EnrollmentFlow(**flow_data)
+        flow_dict = flow.dict()
+        flow_dict['created_at'] = flow_dict['created_at'].isoformat()
+        flow_dict['updated_at'] = flow_dict['updated_at'].isoformat()
+        await db.enrollment_flows.insert_one(flow_dict)
+    
+    return f"Successfully created {len(default_flows)} default flows"
+
+async def get_student_progress(student_id: str) -> Optional[ProgressResponse]:
+    """Get current progress for a student"""
+    progress = await db.student_enrollment_progress.find_one({"student_id": student_id})
+    if not progress:
+        return None
+    
+    # Get flow definition
+    flow = await db.enrollment_flows.find_one({"flow_key": progress["flow_key"]})
+    if not flow:
+        return None
+    
+    # Get student info
+    student = await db.students.find_one({"id": student_id})
+    student_name = student["name"] if student else "Unknown"
+    
+    total_steps = len(flow["steps"])
+    completed_count = len(progress["completed_steps"])
+    progress_percentage = (completed_count / total_steps) * 100 if total_steps > 0 else 0
+    
+    # Determine next action
+    next_action = None
+    if progress["current_step"] and progress["current_step"] not in progress["completed_steps"]:
+        current_step_info = next((s for s in flow["steps"] if s["key"] == progress["current_step"]), None)
+        if current_step_info:
+            next_action = f"Complete: {current_step_info['name']}"
+    
+    return ProgressResponse(
+        student_id=student_id,
+        student_name=student_name,
+        flow_key=progress["flow_key"],
+        current_step=progress["current_step"],
+        completed_steps=progress["completed_steps"],
+        total_steps=total_steps,
+        progress_percentage=progress_percentage,
+        status=progress["status"],
+        enrollment_status=progress["enrollment_status"],
+        next_action=next_action
+    )
+
+async def trigger_flow_event(student_id: str, event_type: str, step_key: str, event_data: Dict = None, triggered_by: str = "system"):
+    """Trigger a flow event and update progress"""
+    try:
+        # Get student and progress
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            return {"error": "Student not found"}
+        
+        progress = await db.student_enrollment_progress.find_one({"student_id": student_id})
+        if not progress:
+            return {"error": "Progress record not found"}
+        
+        # Log the event
+        event = FlowEvent(
+            student_id=student_id,
+            household_token=progress["household_token"],
+            event_type=event_type,
+            step_key=step_key,
+            event_data=event_data or {},
+            triggered_by=triggered_by
+        )
+        
+        event_dict = event.dict()
+        event_dict['created_at'] = event_dict['created_at'].isoformat()
+        await db.flow_events.insert_one(event_dict)
+        
+        # Update progress based on event
+        await update_progress_from_event(student_id, event_type, step_key, event_data)
+        
+        return {"success": True, "event_id": event.id}
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+async def update_progress_from_event(student_id: str, event_type: str, step_key: str, event_data: Dict = None):
+    """Update student progress based on triggered event"""
+    progress = await db.student_enrollment_progress.find_one({"student_id": student_id})
+    if not progress:
+        return
+    
+    flow = await db.enrollment_flows.find_one({"flow_key": progress["flow_key"]})
+    if not flow:
+        return
+    
+    # Get flow steps ordered
+    steps = sorted(flow["steps"], key=lambda x: x["order"])
+    step_keys = [s["key"] for s in steps]
+    
+    updates = {
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Handle different event types
+    if event_type.endswith(".completed"):
+        # Mark step as completed
+        if step_key not in progress["completed_steps"]:
+            updates["$addToSet"] = {"completed_steps": step_key}
+        
+        # Update step data
+        step_data = progress.get("step_data", {})
+        step_data[step_key] = event_data or {}
+        updates["step_data"] = step_data
+        
+        # Move to next step
+        try:
+            current_index = step_keys.index(step_key)
+            if current_index + 1 < len(step_keys):
+                updates["current_step"] = step_keys[current_index + 1]
+            else:
+                # All steps completed
+                updates["status"] = "completed"
+                updates["enrollment_status"] = "enrolled"
+        except ValueError:
+            pass
+    
+    elif event_type.startswith("payment.paid"):
+        # Handle payment events
+        if step_key in ["entrance_payment", "tuition_payment"]:
+            if step_key not in progress["completed_steps"]:
+                updates["$addToSet"] = {"completed_steps": step_key}
+            
+            # Update enrollment status
+            if step_key == "entrance_payment":
+                updates["enrollment_status"] = "payment_completed"
+            elif step_key == "tuition_payment":
+                updates["enrollment_status"] = "tuition_paid"
+    
+    elif event_type.startswith("class.assigned"):
+        # Handle class placement
+        if step_key == "placement":
+            if step_key not in progress["completed_steps"]:
+                updates["$addToSet"] = {"completed_steps": step_key}
+            updates["enrollment_status"] = "enrolled"
+    
+    # Apply updates
+    if "$addToSet" in updates:
+        addToSet = updates.pop("$addToSet")
+        await db.student_enrollment_progress.update_one(
+            {"student_id": student_id},
+            {"$set": updates, "$addToSet": addToSet}
+        )
+    else:
+        await db.student_enrollment_progress.update_one(
+            {"student_id": student_id},
+            {"$set": updates}
+        )
+
+async def send_alimtalk_notification(student_id: str, template_type: str, data: Dict = None):
+    """Send AlimTalk notification (placeholder for integration)"""
+    # TODO: Integrate with Solapi AlimTalk API
+    # For now, just log the notification
+    
+    student = await db.students.find_one({"id": student_id})
+    if not student:
+        return
+    
+    parent = await db.parents.find_one({"id": student["parent_id"]})
+    if not parent:
+        return
+    
+    notification_log = {
+        "student_id": student_id,
+        "parent_phone": parent.get("phone", ""),
+        "template_type": template_type,
+        "data": data or {},
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.notification_logs.insert_one(notification_log)
+    
+    print(f"AlimTalk notification queued: {template_type} to {parent.get('phone', 'N/A')} for student {student['name']}")
+
 # Routes
 @api_router.get("/")
 async def root():
