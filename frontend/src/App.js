@@ -399,33 +399,12 @@ const Dashboard = ({ user }) => {
   );
 };
 
-// Consent Details Data
-const consentDetails = {
+// PDF Consent Forms Configuration
+const consentForms = {
   regulation: {
     title: "학교 규정 동의",
-    content: `
-**학교 운영 규정 및 교육 방침**
-
-1. **출결 관리**
-   - 등교 시간: 오전 8:30까지
-   - 지각 3회는 결석 1회로 처리
-   - 결석 시 반드시 전날까지 연락
-
-2. **학습 지도**
-   - 숙제는 매일 확인하여 제출
-   - 학부모 상담은 월 1회 실시
-   - 성적 평가는 다면평가로 진행
-
-3. **생활 지도**
-   - 교내에서는 실내화 착용 의무
-   - 전자기기 반입 금지
-   - 폭력이나 괴롭힘 발생 시 즉시 조치
-
-4. **안전 관리**
-   - 학교 안전 규칙 준수
-   - 위험 행동 금지
-   - 안전사고 발생 시 즉시 보호자 연락
-    `
+    pdfUrl: "/consent-forms/school-regulations.pdf",
+    description: "학교 운영 규정 및 교육 방침에 동의합니다."
   },
   privacy: {
     title: "개인정보처리방침 동의",
