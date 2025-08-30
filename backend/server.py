@@ -1234,31 +1234,389 @@ async def update_progress_from_event(student_id: str, event_type: str, step_key:
             {"$set": updates}
         )
 
-async def send_alimtalk_notification(student_id: str, template_type: str, data: Dict = None):
-    """Send AlimTalk notification (placeholder for integration)"""
-    # TODO: Integrate with Solapi AlimTalk API
-    # For now, just log the notification
-    
-    student = await db.students.find_one({"id": student_id})
-    if not student:
-        return
-    
-    parent = await db.parents.find_one({"id": student["parent_id"]})
-    if not parent:
-        return
-    
-    notification_log = {
-        "student_id": student_id,
-        "parent_phone": parent.get("phone", ""),
-        "template_type": template_type,
-        "data": data or {},
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat()
+# Dashboard Utility Functions
+async def get_program_display_name(branch: str, program_subtype: str) -> str:
+    """Generate program display name based on branch and subtype"""
+    branch_names = {
+        "kinder": "프라게 킨더",
+        "junior": "프라게 주니어", 
+        "middle": "프라디스 중등"
     }
     
-    await db.notification_logs.insert_one(notification_log)
+    subtype_names = {
+        "regular": "정규",
+        "transfer": "편입",
+        "kinder_single": "유치 단과"
+    }
     
-    print(f"AlimTalk notification queued: {template_type} to {parent.get('phone', 'N/A')} for student {student['name']}")
+    branch_display = branch_names.get(branch, branch)
+    subtype_display = subtype_names.get(program_subtype, program_subtype)
+    
+    return f"{branch_display} · {subtype_display}"
+
+async def should_show_exam_card(student: Dict[str, Any]) -> bool:
+    """Determine if exam card should be shown based on branch and program rules"""
+    branch = student.get("branch")
+    program_subtype = student.get("program_subtype", "regular")
+    requires_exam = student.get("requires_exam", True)
+    
+    # Rule: Hide for kinder_regular, show for others
+    if branch == "kinder" and program_subtype == "regular":
+        return False
+    elif branch in ["junior", "middle"]:
+        return True
+    elif branch == "junior" and program_subtype == "kinder_single" and requires_exam:
+        return True
+    
+    return False
+
+async def get_student_enrollment_status(student_id: str) -> str:
+    """Get enrollment status based on class assignment"""
+    assignment = await db.class_placements.find_one({"student_id": student_id, "status": "active"})
+    return "enrolled" if assignment else "pre_enrollment"
+
+async def build_admission_progress_card(student_id: str) -> AdmissionProgressCard:
+    """Build admission progress card data"""
+    progress = await get_student_progress(student_id)
+    
+    if not progress:
+        return AdmissionProgressCard(
+            current_step="",
+            completed_steps=[],
+            total_steps=0,
+            progress_percentage=0,
+            status="not_started",
+            enrollment_status="new",
+            next_action="Contact for consultation",
+            flow_name=""
+        )
+    
+    # Get flow info for display name
+    flow = await db.enrollment_flows.find_one({"flow_key": progress.flow_key})
+    flow_name = flow["name"] if flow else progress.flow_key
+    
+    return AdmissionProgressCard(
+        current_step=progress.current_step,
+        completed_steps=progress.completed_steps,
+        total_steps=progress.total_steps,
+        progress_percentage=progress.progress_percentage,
+        status=progress.status,
+        enrollment_status=progress.enrollment_status,
+        next_action=progress.next_action,
+        flow_name=flow_name
+    )
+
+async def build_exam_card(student_id: str, student: Dict[str, Any]) -> ExamCard:
+    """Build exam card data"""
+    show_card = await should_show_exam_card(student)
+    
+    if not show_card:
+        return ExamCard(
+            show_card=False,
+            has_reservation=False,
+            reservation_date=None,
+            reservation_time=None,
+            has_result=False,
+            score=None,
+            level=None,
+            passed=None,
+            next_action=None
+        )
+    
+    # Get latest reservation
+    reservation = await db.exam_reservations.find_one(
+        {"student_id": student_id}, 
+        sort=[("created_at", -1)]
+    )
+    
+    # Get latest result
+    result = await db.exam_results.find_one(
+        {"student_id": student_id},
+        sort=[("tested_at", -1)]
+    )
+    
+    next_action = None
+    if not reservation:
+        next_action = "Schedule entrance exam"
+    elif reservation and reservation["status"] == "scheduled":
+        next_action = "Prepare for exam"
+    elif result and not result.get("passed"):
+        next_action = "Schedule retake exam"
+    
+    return ExamCard(
+        show_card=True,
+        has_reservation=bool(reservation),
+        reservation_date=reservation.get("exam_date") if reservation else None,
+        reservation_time=reservation.get("exam_time") if reservation else None,
+        has_result=bool(result),
+        score=result.get("score") if result else None,
+        level=result.get("level") if result else None,
+        passed=result.get("passed") if result else None,
+        next_action=next_action
+    )
+
+async def build_timetable_card(student_id: str) -> TimetableCard:
+    """Build timetable card data"""
+    assignment = await db.class_placements.find_one({"student_id": student_id, "status": "active"})
+    
+    if not assignment:
+        return TimetableCard(
+            show_card=True,
+            is_enrolled=False,
+            class_name=None,
+            teacher_name=None,
+            schedule=None,
+            classroom=None,
+            level=None,
+            start_date=None
+        )
+    
+    # Format schedule string
+    schedule = f"{assignment['weekday']} {assignment['time_start']}-{assignment['time_end']}"
+    
+    return TimetableCard(
+        show_card=True,
+        is_enrolled=True,
+        class_name=assignment["class_name"],
+        teacher_name=assignment["teacher_name"],
+        schedule=schedule,
+        classroom=assignment["classroom"],
+        level=assignment.get("level"),
+        start_date=assignment["start_date"].isoformat() if assignment.get("start_date") else None
+    )
+
+async def build_homework_card(student_id: str) -> HomeworkCard:
+    """Build homework card data"""
+    # Get class assignment
+    assignment = await db.class_placements.find_one({"student_id": student_id, "status": "active"})
+    
+    if not assignment:
+        return HomeworkCard(
+            show_card=False,
+            total_assignments=0,
+            pending_count=0,
+            overdue_count=0,
+            recent_assignments=[]
+        )
+    
+    # Get homework for this class
+    homework_list = await db.homeworks.find({"class_assignment_id": assignment["id"]}).to_list(100)
+    
+    # Get submissions for this student
+    submissions = await db.homework_submissions.find({"student_id": student_id}).to_list(100)
+    submission_map = {sub["homework_id"]: sub for sub in submissions}
+    
+    pending_count = 0
+    overdue_count = 0
+    recent_assignments = []
+    
+    now = datetime.now(timezone.utc)
+    
+    for hw in homework_list[:5]:  # Recent 5
+        submission = submission_map.get(hw["id"])
+        is_submitted = submission and submission["status"] in ["submitted", "graded"]
+        is_overdue = hw["due_date"] < now and not is_submitted
+        
+        if not is_submitted:
+            pending_count += 1
+        if is_overdue:
+            overdue_count += 1
+        
+        recent_assignments.append({
+            "id": hw["id"],
+            "title": hw["title"],
+            "due_date": hw["due_date"].isoformat(),
+            "status": submission["status"] if submission else "not_started",
+            "is_overdue": is_overdue
+        })
+    
+    return HomeworkCard(
+        show_card=True,
+        total_assignments=len(homework_list),
+        pending_count=pending_count,
+        overdue_count=overdue_count,
+        recent_assignments=recent_assignments
+    )
+
+async def build_attendance_card(student_id: str) -> AttendanceCard:
+    """Build attendance card data"""
+    # Get class assignment
+    assignment = await db.class_placements.find_one({"student_id": student_id, "status": "active"})
+    
+    if not assignment:
+        return AttendanceCard(
+            show_card=False,
+            total_classes=0,
+            present_count=0,
+            absent_count=0,
+            late_count=0,
+            attendance_rate=0.0,
+            recent_attendance=[]
+        )
+    
+    # Get attendance records
+    attendance_records = await db.attendances.find({
+        "student_id": student_id,
+        "class_assignment_id": assignment["id"]
+    }).sort("date", -1).to_list(100)
+    
+    present_count = len([a for a in attendance_records if a["status"] == "present"])
+    late_count = len([a for a in attendance_records if a["status"] == "late"])
+    absent_count = len([a for a in attendance_records if a["status"] in ["absent", "excused"]])
+    total_classes = len(attendance_records)
+    
+    attendance_rate = (present_count + late_count) / total_classes * 100 if total_classes > 0 else 0
+    
+    recent_attendance = []
+    for record in attendance_records[:10]:  # Recent 10
+        recent_attendance.append({
+            "date": record["date"],
+            "status": record["status"],
+            "arrival_time": record.get("arrival_time"),
+            "notes": record.get("notes")
+        })
+    
+    return AttendanceCard(
+        show_card=True,
+        total_classes=total_classes,
+        present_count=present_count,
+        absent_count=absent_count,
+        late_count=late_count,
+        attendance_rate=attendance_rate,
+        recent_attendance=recent_attendance
+    )
+
+async def build_billing_card(student_id: str, household_token: str) -> BillingCard:
+    """Build billing card data"""
+    # Get pending payments
+    pending_payments = await db.payment_records.find({
+        "student_id": student_id,
+        "payment_status": "pending"
+    }).sort("due_date", 1).to_list(50)
+    
+    # Get current month billing
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
+    current_billing = await db.billings.find_one({
+        "student_id": student_id,
+        "month": current_month
+    })
+    
+    # Count overdue payments
+    now = datetime.now(timezone.utc)
+    overdue_count = len([p for p in pending_payments if p.get("due_date") and p["due_date"] < now])
+    
+    # Get payment history count
+    history_count = await db.payment_records.count_documents({"student_id": student_id})
+    
+    pending_list = []
+    for payment in pending_payments:
+        pending_list.append({
+            "id": payment["id"],
+            "type": payment["payment_type"],
+            "amount": payment["amount"],
+            "due_date": payment.get("due_date").isoformat() if payment.get("due_date") else None,
+            "currency": payment.get("currency", "KRW")
+        })
+    
+    return BillingCard(
+        pending_payments=pending_list,
+        current_month_amount=current_billing["amount"] if current_billing else None,
+        due_date=current_billing["due_date"].isoformat() if current_billing and current_billing.get("due_date") else None,
+        payment_history_count=history_count,
+        overdue_count=overdue_count
+    )
+
+async def build_notices_card(student_id: str, student: Dict[str, Any]) -> NoticesCard:
+    """Build notices card data"""
+    branch = student.get("branch", "")
+    
+    # Build query for relevant notices
+    query = {
+        "published": True,
+        "$or": [
+            {"target_audience": "all"},
+            {"target_audience": f"branch:{branch}"}
+        ]
+    }
+    
+    # Get notices
+    notices = await db.notices.find(query).sort("created_at", -1).limit(20).to_list(20)
+    
+    # Get acknowledgments for this student
+    ack_query = {"student_id": student_id}
+    acknowledgments = await db.notice_acknowledgments.find(ack_query).to_list(100)
+    ack_map = {ack["notice_id"]: ack for ack in acknowledgments}
+    
+    unread_count = 0
+    urgent_count = 0
+    recent_notices = []
+    
+    for notice in notices:
+        is_acknowledged = notice["id"] in ack_map and ack_map[notice["id"]]["acknowledged"]
+        is_urgent = notice.get("priority") in ["high", "urgent"]
+        
+        if not is_acknowledged:
+            unread_count += 1
+        if is_urgent and not is_acknowledged:
+            urgent_count += 1
+        
+        recent_notices.append({
+            "id": notice["id"],
+            "title": notice["title"],
+            "type": notice["notice_type"],
+            "priority": notice.get("priority", "normal"),
+            "published_date": notice.get("publish_date", notice["created_at"]).isoformat(),
+            "is_read": is_acknowledged,
+            "is_urgent": is_urgent
+        })
+    
+    return NoticesCard(
+        unread_count=unread_count,
+        urgent_count=urgent_count,
+        recent_notices=recent_notices[:5]  # Top 5
+    )
+
+async def build_resources_card(student_id: str, household_token: str, student: Dict[str, Any]) -> ResourcesCard:
+    """Build resources card data"""
+    branch = student.get("branch", "")
+    
+    # Get guides for this branch
+    query = {
+        "published": True,
+        "$or": [
+            {"target_branch": "all"},
+            {"target_branch": branch}
+        ]
+    }
+    
+    guides = await db.guides.find(query).to_list(100)
+    
+    # Get guide acknowledgments
+    guide_acks = await db.guide_acknowledgments.find({"student_id": student_id}).to_list(100)
+    ack_map = {ack["guide_id"]: ack for ack in guide_acks}
+    
+    guides_unread = 0
+    required_guides_pending = 0
+    
+    for guide in guides:
+        is_acknowledged = guide["id"] in ack_map and ack_map[guide["id"]]["acknowledged"]
+        is_required = guide.get("required_reading", False)
+        
+        if not is_acknowledged:
+            guides_unread += 1
+        if is_required and not is_acknowledged:
+            required_guides_pending += 1
+    
+    # Check consent status (from existing admission_data or new consent system)
+    admission_data = await db.admission_data.find_one({"household_token": household_token})
+    consent_pending = admission_data and admission_data.get("consent_status") != "completed"
+    
+    return ResourcesCard(
+        guides_total=len(guides),
+        guides_unread=guides_unread,
+        required_guides_pending=required_guides_pending,
+        consent_pending=consent_pending
+    )
 
 # Routes
 @api_router.get("/")
