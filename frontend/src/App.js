@@ -1959,7 +1959,7 @@ const AdminDashboard = () => {
             <p className="text-gray-600">Frage EDU 콘텐츠 관리</p>
           </div>
           <div className="flex space-x-4">
-            <Button onClick={() => window.location.href = '/admin/users'} variant="outline">
+            <Button onClick={() => window.location.href = '/admin/members'} variant="outline">
               <Users className="w-4 h-4 mr-2" />
               회원 관리
             </Button>
