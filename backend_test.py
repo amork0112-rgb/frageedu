@@ -277,6 +277,251 @@ class FrageEDUAPITester:
         
         return success
 
+    # Admin Authentication Tests
+    def test_admin_signup(self):
+        """Test admin account creation"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        admin_data = {
+            "username": f"admin{timestamp}",
+            "email": f"admin{timestamp}@frage.edu",
+            "password": "AdminPass123!"
+        }
+        
+        success, response = self.run_test("Admin Signup", "POST", "admin/signup", 200, admin_data)
+        if success and 'token' in response:
+            self.admin_token = response['token']
+            print(f"   Saved admin token: {self.admin_token[:20]}...")
+            return True
+        return False
+
+    def test_admin_login(self):
+        """Test admin login"""
+        # Create admin first if not exists
+        if not self.admin_token:
+            if not self.test_admin_signup():
+                return False
+        
+        # Test login with existing admin
+        timestamp = datetime.now().strftime('%H%M%S')
+        admin_data = {
+            "username": f"loginadmin{timestamp}",
+            "email": f"loginadmin{timestamp}@frage.edu", 
+            "password": "AdminLogin123!"
+        }
+        
+        # Create admin for login test
+        success, signup_response = self.run_test("Create Admin for Login", "POST", "admin/signup", 200, admin_data)
+        if not success:
+            return False
+        
+        # Test login
+        login_data = {
+            "username": admin_data["username"],
+            "password": admin_data["password"]
+        }
+        
+        success, response = self.run_test("Admin Login", "POST", "admin/login", 200, login_data)
+        return success
+
+    # Member Management Tests
+    def test_get_members_list(self):
+        """Test GET /admin/members with various filters"""
+        if not self.admin_token:
+            print("❌ No admin token available for members list test")
+            return False
+        
+        # Test basic list
+        success, response = self.run_test("Get Members List", "GET", "admin/members", 200)
+        if not success:
+            return False
+        
+        # Test with search query
+        params = {"query": "김"}
+        success, response = self.run_test("Get Members with Search", "GET", "admin/members", 200, params=params)
+        if not success:
+            return False
+        
+        # Test with branch filter
+        params = {"branch": "junior"}
+        success, response = self.run_test("Get Members by Branch", "GET", "admin/members", 200, params=params)
+        if not success:
+            return False
+        
+        # Test with status filter
+        params = {"status": "active"}
+        success, response = self.run_test("Get Active Members", "GET", "admin/members", 200, params=params)
+        if not success:
+            return False
+        
+        # Test with pagination
+        params = {"page": 1, "pageSize": 10}
+        success, response = self.run_test("Get Members with Pagination", "GET", "admin/members", 200, params=params)
+        if not success:
+            return False
+        
+        # Test with sorting
+        params = {"sort": "joinedAt:desc"}
+        success, response = self.run_test("Get Members Sorted", "GET", "admin/members", 200, params=params)
+        
+        return success
+
+    def test_get_member_details(self):
+        """Test GET /admin/members/:id for detailed member profile"""
+        if not self.admin_token or not self.test_user_id:
+            print("❌ No admin token or test user ID available for member details test")
+            return False
+        
+        success, response = self.run_test("Get Member Details", "GET", f"admin/members/{self.test_user_id}", 200)
+        
+        if success and response:
+            # Verify response structure
+            required_fields = ['user', 'parent', 'students']
+            for field in required_fields:
+                if field not in response:
+                    print(f"❌ Missing required field: {field}")
+                    return False
+            print("✅ Member details structure verified")
+        
+        return success
+
+    def test_reset_member_password(self):
+        """Test POST /admin/members/:id/reset-password with audit logging"""
+        if not self.admin_token or not self.test_user_id:
+            print("❌ No admin token or test user ID available for password reset test")
+            return False
+        
+        success, response = self.run_test("Reset Member Password", "POST", f"admin/members/{self.test_user_id}/reset-password", 200)
+        
+        if success and response:
+            if 'temporary_password' in response:
+                print(f"✅ Temporary password generated: {response['temporary_password']}")
+            else:
+                print("⚠️ No temporary password in response")
+        
+        return success
+
+    def test_update_member_status(self):
+        """Test PATCH /admin/members/:id/status for enable/disable with audit"""
+        if not self.admin_token or not self.test_user_id:
+            print("❌ No admin token or test user ID available for status update test")
+            return False
+        
+        # Test disable user
+        status_data = {"status": "disabled"}
+        success, response = self.run_test("Disable Member", "PATCH", f"admin/members/{self.test_user_id}/status", 200, status_data)
+        if not success:
+            return False
+        
+        # Test enable user
+        status_data = {"status": "active"}
+        success, response = self.run_test("Enable Member", "PATCH", f"admin/members/{self.test_user_id}/status", 200, status_data)
+        
+        return success
+
+    def test_bulk_export_members(self):
+        """Test POST /admin/members/bulk/export for CSV export"""
+        if not self.admin_token or not self.test_user_id:
+            print("❌ No admin token or test user ID available for bulk export test")
+            return False
+        
+        export_data = [self.test_user_id]
+        success, response = self.run_test("Bulk Export Members", "POST", "admin/members/bulk/export", 200, export_data)
+        
+        if success and response:
+            if 'csv_content' in response:
+                print("✅ CSV content generated successfully")
+                # Print first few lines of CSV for verification
+                csv_lines = response['csv_content'].split('\n')[:3]
+                for line in csv_lines:
+                    print(f"   CSV: {line}")
+            else:
+                print("⚠️ No CSV content in response")
+        
+        return success
+
+    def test_bulk_notify_members(self):
+        """Test POST /admin/members/bulk/notify for AlimTalk notifications"""
+        if not self.admin_token or not self.test_user_id:
+            print("❌ No admin token or test user ID available for bulk notify test")
+            return False
+        
+        notify_data = {
+            "user_ids": [self.test_user_id],
+            "message": "테스트 알림 메시지입니다."
+        }
+        
+        # The endpoint expects user_ids as a list in the request body
+        success, response = self.run_test("Bulk Notify Members", "POST", "admin/members/bulk/notify", 200, notify_data)
+        
+        return success
+
+    def test_get_audit_logs(self):
+        """Test GET /admin/audit for audit log viewing"""
+        if not self.admin_token:
+            print("❌ No admin token available for audit logs test")
+            return False
+        
+        # Test basic audit logs
+        success, response = self.run_test("Get Audit Logs", "GET", "admin/audit", 200)
+        if not success:
+            return False
+        
+        # Test with targetId filter
+        if self.test_user_id:
+            params = {"targetId": self.test_user_id}
+            success, response = self.run_test("Get Audit Logs by Target", "GET", "admin/audit", 200, params=params)
+            if not success:
+                return False
+        
+        # Test with action type filter
+        params = {"type": "RESET_PW"}
+        success, response = self.run_test("Get Audit Logs by Action", "GET", "admin/audit", 200, params=params)
+        if not success:
+            return False
+        
+        # Test with pagination
+        params = {"page": 1, "limit": 10}
+        success, response = self.run_test("Get Audit Logs with Pagination", "GET", "admin/audit", 200, params=params)
+        
+        return success
+
+    def test_login_disabled_user(self):
+        """Test login with disabled user account"""
+        # First create a user and disable them
+        timestamp = datetime.now().strftime('%H%M%S')
+        signup_data = {
+            "email": f"disabled{timestamp}@frage.edu",
+            "phone": "010-5555-5555",
+            "name": f"비활성사용자{timestamp}",
+            "student_name": f"비활성학생{timestamp}",
+            "password": "DisabledTest123!",
+            "terms_accepted": True,
+            "branch": "middle"
+        }
+        
+        # Create user
+        success, signup_response = self.run_test("Create User for Disable Test", "POST", "signup", 200, signup_data)
+        if not success:
+            return False
+        
+        user_id = signup_response['user']['id']
+        
+        # Disable the user
+        if self.admin_token:
+            status_data = {"status": "disabled"}
+            success, response = self.run_test("Disable Test User", "PATCH", f"admin/members/{user_id}/status", 200, status_data)
+            if not success:
+                return False
+        
+        # Try to login with disabled user
+        login_data = {
+            "email": signup_data["email"],
+            "password": signup_data["password"]
+        }
+        
+        success, response = self.run_test("Login Disabled User", "POST", "login", 401, login_data)
+        return success
+
 def main():
     print("🚀 Starting Frage EDU API Tests")
     print("=" * 50)
