@@ -653,6 +653,38 @@ class FrageEDUAPITester:
         
         return True
 
+    def test_branch_filtering_issue(self):
+        """Test the specific branch filtering issue"""
+        if not self.admin_token:
+            print("❌ No admin token available for branch filtering test")
+            return False
+        
+        print("🔍 Testing branch filtering behavior...")
+        
+        # Test with different branch filters to see RBAC behavior
+        branches_to_test = ["kinder", "junior", "middle"]
+        
+        for branch in branches_to_test:
+            params = {"branch_filter": branch}
+            success, response = self.run_test(f"Filter by {branch} branch", "GET", "admin/student-management", 200, params=params)
+            
+            if success and response:
+                students = response.get('students', [])
+                allowed_branches = response.get('allowed_branches', [])
+                
+                print(f"   Branch {branch}: {len(students)} students found")
+                print(f"   Admin allowed branches: {allowed_branches}")
+                
+                # Check if the filtering is working correctly
+                if branch not in allowed_branches and len(students) > 0:
+                    print(f"   ⚠️  Found students in {branch} but admin not allowed access!")
+                elif branch in allowed_branches and len(students) == 0:
+                    print(f"   ℹ️  No students in {branch} branch (admin has access)")
+                elif branch in allowed_branches and len(students) > 0:
+                    print(f"   ✅ Found {len(students)} students in {branch} (admin has access)")
+        
+        return True
+
     def test_login_disabled_user(self):
         """Test login with disabled user account"""
         # First create a user and disable them
