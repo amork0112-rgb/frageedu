@@ -532,6 +532,7 @@ async def signup(user_data: UserCreate):
     # Insert user
     user_dict = user.dict()
     user_dict['created_at'] = user_dict['created_at'].isoformat()
+    user_dict['last_login_at'] = None  # Set to None initially
     await db.users.insert_one(user_dict)
     
     # Create parent record
@@ -548,11 +549,12 @@ async def signup(user_data: UserCreate):
     parent_dict['created_at'] = parent_dict['created_at'].isoformat()
     await db.parents.insert_one(parent_dict)
     
-    # Create student record
+    # Create student record with birthdate
     student = Student(
         parent_id=parent.id,
         name=user_data.student_name,
-        grade="1"  # Default grade, can be updated later
+        grade="1",  # Default grade, can be updated later
+        birthdate=user_data.student_birthdate  # Add birthdate
     )
     
     await db.students.insert_one(student.dict())
