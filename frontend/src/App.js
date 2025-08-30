@@ -2561,6 +2561,13 @@ function App() {
           <Route path="/programs" element={<Programs />} />
           <Route path="/news" element={<News />} />
           <Route path="/market" element={<Market />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/news" element={<AdminNewsManagement />} />
+          <Route path="/admin/news/new" element={<AdminNewsEditor />} />
+          <Route path="/admin/news/edit/:id" element={<AdminNewsEditor />} />
           <Route path="/admissions" element={<AdmissionsPage />} />
           <Route path="/portal" element={
             <TokenAuthWrapper>
