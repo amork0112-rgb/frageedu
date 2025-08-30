@@ -989,23 +989,41 @@ async def get_member_details(user_id: str, current_admin: AdminResponse = Depend
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Remove password_hash
+    # Remove password_hash and convert ObjectId fields
     if 'password_hash' in user:
         del user['password_hash']
+    if '_id' in user:
+        del user['_id']
     
     # Get parent info
     parent = await db.parents.find_one({"user_id": user_id})
     if not parent:
         raise HTTPException(status_code=404, detail="Parent info not found")
     
+    # Clean parent data
+    if '_id' in parent:
+        del parent['_id']
+    
     # Get students
     students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
     
+    # Clean student data
+    for student in students:
+        if '_id' in student:
+            del student['_id']
+    
     # Get admission data
     admission_data = await db.admission_data.find_one({"household_token": user['household_token']})
+    if admission_data and '_id' in admission_data:
+        del admission_data['_id']
     
     # Get exam reservations
     exam_reservations = await db.exam_reservations.find({"household_token": user['household_token']}).to_list(10)
+    
+    # Clean exam reservation data
+    for reservation in exam_reservations:
+        if '_id' in reservation:
+            del reservation['_id']
     
     return {
         "user": UserResponse(**user),
