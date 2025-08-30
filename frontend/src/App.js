@@ -1229,32 +1229,14 @@ const Programs = () => {
                   </div>
                   
                   <div className="space-y-3">
-                    {program.examRequired ? (
-                      <>
-                        <Button 
-                          onClick={() => window.location.href = `/exam/reserve?brchType=${program.id}`}
-                          className="w-full bg-purple-600 hover:bg-purple-700"
-                        >
-                          <Calendar className="w-4 h-4 mr-2" />
-                          {program.examText}
-                        </Button>
-                        <Button 
-                          variant="outline"
-                          onClick={() => window.location.href = `/exam/guide?brchType=${program.id}`}
-                          className="w-full"
-                        >
-                          시험 안내보기
-                        </Button>
-                      </>
-                    ) : (
-                      <Button 
-                        onClick={() => window.location.href = '/consultation'}
-                        className="w-full bg-orange-600 hover:bg-orange-700"
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        {program.consultationText}
-                      </Button>
-                    )}
+                    <Button 
+                      variant="outline"
+                      onClick={() => window.location.href = '/admissions'}
+                      className="w-full"
+                    >
+                      <Info className="w-4 h-4 mr-2" />
+                      입학 안내보기
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
