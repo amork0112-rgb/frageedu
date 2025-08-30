@@ -562,6 +562,570 @@ const useAuth = () => {
   return { user, token, login, logout };
 };
 
+// Exam Reservation Component
+const ExamReservationForm = () => {
+  const { user, token } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [brchType, setBrchType] = useState('');
+
+  useEffect(() => {
+    // Get branch type from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const branchFromUrl = urlParams.get('brchType') || 'junior';
+    setBrchType(branchFromUrl);
+
+    // Redirect to signup if not logged in
+    if (!token && !user) {
+      window.location.href = `/signup?next=/exam/reserve?brchType=${branchFromUrl}`;
+      return;
+    }
+  }, [token, user]);
+
+  const handleTallyRedirect = () => {
+    setLoading(true);
+    
+    // Construct Tally prefilled URL
+    const base = "https://tally.so/r/n9oxBG";
+    const url = new URL(base);
+    
+    if (user) {
+      url.searchParams.set("brchType", brchType);
+      url.searchParams.set("token", user.household_token);
+      url.searchParams.set("user_id", user.id);
+      url.searchParams.set("parent_name", user.parent_name || user.email);
+      url.searchParams.set("parent_email", user.email);
+      url.searchParams.set("parent_phone", user.phone || '');
+      url.searchParams.set("student_name", user.student_name || '');
+    }
+    
+    window.location.href = url.toString();
+  };
+
+  const getBranchInfo = (type) => {
+    switch(type) {
+      case 'junior':
+        return {
+          title: '초등부 입학시험',
+          description: '초등학생 대상 영어 레벨테스트 및 입학 상담',
+          duration: '60분',
+          format: '오프라인 시험'
+        };
+      case 'middle':
+        return {
+          title: '중등부 입학시험',
+          description: '중학생 대상 심화 영어 평가 및 상담',
+          duration: '90분',
+          format: '오프라인 시험'
+        };
+      default:
+        return {
+          title: '입학시험',
+          description: '학생 수준 평가 및 상담',
+          duration: '60-90분',
+          format: '오프라인 시험'
+        };
+    }
+  };
+
+  const branchInfo = getBranchInfo(brchType);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="pt-6">
+            <AlertCircle className="w-16 h-16 text-orange-600 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">로그인이 필요합니다</h2>
+            <p className="text-gray-600 mb-4">입학시험 예약을 위해 먼저 로그인해주세요.</p>
+            <Button onClick={() => window.location.href = '/login'} className="bg-purple-600 hover:bg-purple-700">
+              로그인하기
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
+      <Header />
+      <div className="max-w-4xl mx-auto px-4 py-24">
+        {/* Header Section */}
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <BookmarkCheck className="w-10 h-10 text-purple-600" />
+          </div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+            {branchInfo.title} 예약
+          </h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            {branchInfo.description}
+          </p>
+        </div>
+
+        {/* Branch Type Badge */}
+        <div className="flex justify-center mb-8">
+          <Badge className={`px-4 py-2 text-sm font-medium ${
+            brchType === 'junior' 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-blue-100 text-blue-800'
+          }`}>
+            {brchType === 'junior' ? '초등부' : '중등부'} 과정
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Reservation Card */}
+          <div className="lg:col-span-2">
+            <Card className="rounded-xl shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-t-xl">
+                <CardTitle className="text-xl">시험 예약 신청</CardTitle>
+                <CardDescription className="text-purple-100">
+                  아래 버튼을 클릭하여 시험 일정을 예약해주세요
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-8">
+                {/* User Info Display */}
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-4">신청자 정보</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">학부모 성명:</span>
+                      <span className="ml-2 font-medium">{user.parent_name || user.email}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">이메일:</span>
+                      <span className="ml-2 font-medium">{user.email}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">휴대폰:</span>
+                      <span className="ml-2 font-medium">{user.phone || '미입력'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">학생 이름:</span>
+                      <span className="ml-2 font-medium">{user.student_name || '미입력'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reservation Form Notice */}
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                  <div className="flex">
+                    <Info className="h-6 w-6 text-blue-400 mr-3" />
+                    <div>
+                      <h4 className="text-blue-800 font-medium">예약 안내</h4>
+                      <p className="text-blue-700 text-sm mt-1">
+                        시험 예약 양식에서 캠퍼스, 일정, 레벨을 선택하실 수 있습니다.
+                        기본 정보는 자동으로 입력됩니다.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <Button 
+                  onClick={handleTallyRedirect}
+                  disabled={loading}
+                  className="w-full bg-purple-600 hover:bg-purple-700 py-4 text-lg"
+                >
+                  {loading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                      예약 양식으로 이동 중...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <Calendar className="w-5 h-5 mr-2" />
+                      시험 일정 예약하기
+                      <ExternalLink className="w-4 h-4 ml-2" />
+                    </div>
+                  )}
+                </Button>
+
+                <p className="text-center text-sm text-gray-500 mt-4">
+                  예약 완료 후 카카오 알림톡으로 확정 안내를 드립니다
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Side Info Panel */}
+          <div className="space-y-6">
+            {/* Exam Info Card */}
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">시험 정보</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <Clock className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium">소요시간</p>
+                    <p className="text-sm text-gray-600">{branchInfo.duration}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <MapPin className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium">시험 형태</p>
+                    <p className="text-sm text-gray-600">{branchInfo.format}</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Users className="w-5 h-5 text-purple-600" />
+                  <div>
+                    <p className="font-medium">준비물</p>
+                    <p className="text-sm text-gray-600">신분증, 필기구</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Process Steps */}
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">진행 절차</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                      1
+                    </div>
+                    <div>
+                      <p className="font-medium">시험 예약</p>
+                      <p className="text-sm text-gray-600">원하는 일정과 캠퍼스 선택</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                      2
+                    </div>
+                    <div>
+                      <p className="font-medium">시험 응시</p>
+                      <p className="text-sm text-gray-600">예약된 일시에 캠퍼스 방문</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                      3
+                    </div>
+                    <div>
+                      <p className="font-medium">결과 상담</p>
+                      <p className="text-sm text-gray-600">레벨 확정 및 수업 안내</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <div className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-semibold mt-0.5">
+                      4
+                    </div>
+                    <div>
+                      <p className="font-medium">등록 완료</p>
+                      <p className="text-sm text-gray-600">수강료 납입 및 수업 시작</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contact Info */}
+            <Card className="rounded-xl shadow-sm bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
+              <CardContent className="p-6">
+                <h4 className="font-semibold text-purple-900 mb-3">문의사항이 있으시다면?</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center space-x-2 text-purple-700">
+                    <Phone className="w-4 h-4" />
+                    <span>02-1234-5678</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-purple-700">
+                    <Mail className="w-4 h-4" />
+                    <span>info@frage.edu</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+// Exam Confirmation Page
+const ExamConfirmation = () => {
+  const [brchType, setBrchType] = useState('');
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const branchFromUrl = urlParams.get('brchType') || 'junior';
+    setBrchType(branchFromUrl);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+      <Header />
+      <div className="max-w-2xl mx-auto px-4 py-24">
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+            예약이 접수되었습니다
+          </h1>
+          <p className="text-xl text-gray-600">
+            시험 일정 확정 후 카카오 알림톡으로 안내드리겠습니다
+          </p>
+        </div>
+
+        <Card className="rounded-xl shadow-lg bg-white">
+          <CardContent className="p-8 text-center">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+              <h3 className="font-semibold text-green-800 mb-2">접수 완료</h3>
+              <p className="text-green-700 text-sm">
+                입학시험 예약이 정상적으로 접수되었습니다.<br />
+                담당자 검토 후 24시간 내에 확정 안내를 드립니다.
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-8 text-left">
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-gray-600">과정</span>
+                <span className="font-medium">
+                  {brchType === 'junior' ? '초등부' : '중등부'} 입학시험
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-gray-600">접수일시</span>
+                <span className="font-medium">
+                  {new Date().toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-gray-600">알림 방법</span>
+                <span className="font-medium">카카오 알림톡</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.href = '/'}
+                className="flex-1"
+              >
+                홈으로 돌아가기
+              </Button>
+              <Button 
+                onClick={() => window.location.href = `/exam/guide?brchType=${brchType}`}
+                className="flex-1 bg-purple-600 hover:bg-purple-700"
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                시험 준비 안내
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+// Exam Guide Page
+const ExamGuide = () => {
+  const [brchType, setBrchType] = useState('');
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const branchFromUrl = urlParams.get('brchType') || 'junior';
+    setBrchType(branchFromUrl);
+  }, []);
+
+  const getGuideContent = (type) => {
+    if (type === 'junior') {
+      return {
+        title: '초등부 입학시험 안내',
+        duration: '60분',
+        sections: [
+          { name: '듣기 평가', time: '20분', description: '기본 어휘 및 문장 이해력 평가' },
+          { name: '읽기 평가', time: '25분', description: '독해력 및 문법 기초 평가' },
+          { name: '말하기 평가', time: '15분', description: '간단한 대화 및 발표 능력 평가' }
+        ]
+      };
+    } else {
+      return {
+        title: '중등부 입학시험 안내',
+        duration: '90분',
+        sections: [
+          { name: '듣기 평가', time: '25분', description: '심화 듣기 및 노트테이킹 평가' },
+          { name: '읽기 평가', time: '35분', description: '복합 독해 및 비판적 사고 평가' },
+          { name: '쓰기 평가', time: '20분', description: '에세이 작성 및 논증 능력 평가' },
+          { name: '말하기 평가', time: '10분', description: '토론 및 프레젠테이션 능력 평가' }
+        ]
+      };
+    }
+  };
+
+  const guideContent = getGuideContent(brchType);
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="max-w-4xl mx-auto px-4 py-24">
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <BookOpen className="w-10 h-10 text-blue-600" />
+          </div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+            {guideContent.title}
+          </h1>
+          <p className="text-xl text-gray-600">
+            시험 당일 준비사항과 진행 방식을 안내드립니다
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            {/* Test Sections */}
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl">시험 구성</CardTitle>
+                <CardDescription>
+                  총 소요시간: {guideContent.duration}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {guideContent.sections.map((section, index) => (
+                    <div key={index} className="border-l-4 border-blue-400 pl-4 py-2">
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="font-semibold text-gray-900">{section.name}</h4>
+                        <Badge variant="outline">{section.time}</Badge>
+                      </div>
+                      <p className="text-gray-600 text-sm">{section.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Preparation Tips */}
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-xl">준비 사항</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">지참물</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span>신분증 (학생증 또는 주민등록증)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span>필기구 (연필, 지우개)</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        <span>물병 (선택사항)</span>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">주의사항</h4>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-center space-x-2">
+                        <AlertCircle className="w-4 h-4 text-orange-600" />
+                        <span>시험 시작 15분 전 도착</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <AlertCircle className="w-4 h-4 text-orange-600" />
+                        <span>전자기기 사용 금지</span>
+                      </li>
+                      <li className="flex items-center space-x-2">
+                        <AlertCircle className="w-4 h-4 text-orange-600" />
+                        <span>시험 중 퇴실 불가</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <Card className="rounded-xl shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg">시험 당일 일정</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">도착</span>
+                    <span className="font-medium">시험 15분 전</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">등록 및 안내</span>
+                    <span className="font-medium">10분</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">시험 진행</span>
+                    <span className="font-medium">{guideContent.duration}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">결과 안내</span>
+                    <span className="font-medium">시험 후 1주일</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="p-6">
+                <h4 className="font-semibold text-blue-900 mb-3">궁금한 점이 있다면?</h4>
+                <p className="text-blue-700 text-sm mb-4">
+                  시험 관련 문의사항은 언제든지 연락 주세요.
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center space-x-2 text-blue-700">
+                    <Phone className="w-4 h-4" />
+                    <span>02-1234-5678</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-blue-700">
+                    <Mail className="w-4 h-4" />
+                    <span>exam@frage.edu</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="text-center mt-12">
+          <Button 
+            onClick={() => window.location.href = '/'}
+            variant="outline"
+            className="px-8"
+          >
+            홈으로 돌아가기
+          </Button>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
 // Simple Placeholder Pages
 const Programs = () => (
   <div className="min-h-screen bg-white pt-20">
