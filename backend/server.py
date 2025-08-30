@@ -105,12 +105,55 @@ class UserLogin(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: str
+    role: str
+    status: str
+    name: str
     phone: str
-    parent_name: str
-    student_name: str
     household_token: str
+    last_login_at: Optional[datetime]
     created_at: datetime
     email_verified: bool
+
+class ParentResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    phone: str
+    email: str
+    branch: str
+    household_token: str
+    created_at: datetime
+
+class StudentResponse(BaseModel):
+    id: str
+    parent_id: str
+    name: str
+    grade: str
+    birthdate: Optional[str]
+    notes: Optional[str]
+
+class MemberListResponse(BaseModel):
+    id: str
+    parent_name: str
+    phone: str
+    email: str
+    students: List[Dict[str, str]]
+    branch: str
+    household_token: str
+    joined_at: datetime
+    last_login: Optional[datetime]
+    status: str
+
+class MemberDetailResponse(BaseModel):
+    user: UserResponse
+    parent: ParentResponse
+    students: List[StudentResponse]
+    admission_data: Optional[Dict[str, Any]]
+    exam_reservations: List[Dict[str, Any]]
+    consent_status: Optional[str]
+    forms_status: Optional[str]
+    guides_status: Optional[str]
+    checklist_status: Optional[str]
 
 class AdmissionData(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
