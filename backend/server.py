@@ -544,6 +544,131 @@ class ClassPlacement(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # Parent Dashboard Models
+# Dashboard Response Models
+class StudentInfo(BaseModel):
+    id: str
+    name: str
+    grade: str
+    birthdate: Optional[str]
+    branch: str
+    program_subtype: str
+    requires_exam: bool
+    program_display: str  # "프라게 킨더 · 정규", "프라게 주니어 · 유치 단과"
+
+class AdmissionProgressCard(BaseModel):
+    current_step: str
+    completed_steps: List[str]
+    total_steps: int
+    progress_percentage: float
+    status: str
+    enrollment_status: str
+    next_action: Optional[str]
+    flow_name: str
+
+class ExamCard(BaseModel):
+    show_card: bool
+    has_reservation: bool
+    reservation_date: Optional[str]
+    reservation_time: Optional[str]
+    has_result: bool
+    score: Optional[int]
+    level: Optional[str]
+    passed: Optional[bool]
+    next_action: Optional[str]
+
+class TimetableCard(BaseModel):
+    show_card: bool
+    is_enrolled: bool
+    class_name: Optional[str]
+    teacher_name: Optional[str]
+    schedule: Optional[str]  # "Monday/Wednesday 4:00-5:30 PM"
+    classroom: Optional[str]
+    level: Optional[str]
+    start_date: Optional[str]
+
+class HomeworkCard(BaseModel):
+    show_card: bool
+    total_assignments: int
+    pending_count: int
+    overdue_count: int
+    recent_assignments: List[Dict[str, Any]]
+
+class AttendanceCard(BaseModel):
+    show_card: bool
+    total_classes: int
+    present_count: int
+    absent_count: int
+    late_count: int
+    attendance_rate: float
+    recent_attendance: List[Dict[str, Any]]
+
+class BillingCard(BaseModel):
+    pending_payments: List[Dict[str, Any]]
+    current_month_amount: Optional[float]
+    due_date: Optional[str]
+    payment_history_count: int
+    overdue_count: int
+
+class NoticesCard(BaseModel):
+    unread_count: int
+    urgent_count: int
+    recent_notices: List[Dict[str, Any]]
+
+class ResourcesCard(BaseModel):
+    guides_total: int
+    guides_unread: int
+    required_guides_pending: int
+    consent_pending: bool
+
+class DashboardCardsResponse(BaseModel):
+    student_info: StudentInfo
+    admission_progress: AdmissionProgressCard
+    exam: ExamCard
+    timetable: TimetableCard
+    homework: HomeworkCard
+    attendance: AttendanceCard
+    billing: BillingCard
+    notices: NoticesCard
+    resources: ResourcesCard
+
+class ComprehensiveDashboardResponse(BaseModel):
+    parent_info: Dict[str, Any]
+    students: List[StudentInfo]  # For dropdown
+    current_student: DashboardCardsResponse
+    global_notifications: List[Dict[str, Any]]
+
+# Exam Reservation Models
+class ExamReservationRequest(BaseModel):
+    student_id: str
+    exam_date: str  # "2025-09-01"
+    exam_time: str  # "14:00"
+    branch_type: str
+    notes: Optional[str] = None
+
+class ExamReservation(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    household_token: str
+    branch_type: str  # kinder, junior, middle
+    exam_date: str
+    exam_time: str
+    status: str = "scheduled"  # scheduled, completed, cancelled, no_show
+    notes: Optional[str] = None
+    slot_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Request Models
+class HomeworkSubmissionRequest(BaseModel):
+    submission_text: Optional[str] = None
+    file_urls: List[str] = []
+
+class NoticeAcknowledgmentRequest(BaseModel):
+    notice_ids: List[str]
+
+class GuideAcknowledgmentRequest(BaseModel):
+    guide_id: str
+
 class TestScheduleResponse(BaseModel):
     id: str
     student_name: str
