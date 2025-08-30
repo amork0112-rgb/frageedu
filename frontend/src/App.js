@@ -58,7 +58,22 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Quote
+  Quote,
+  Search,
+  Filter,
+  MoreVertical,
+  Copy,
+  Download,
+  RefreshCw,
+  UserX,
+  UserCheck,
+  Key,
+  Trash,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  SortAsc,
+  SortDesc
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
