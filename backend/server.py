@@ -2650,84 +2650,38 @@ async def get_student_management_list(
         
         # Search functionality
         if search:
-            search_query = {
-                "$or": [
-                    {"name": {"$regex": search, "$options": "i"}},
-                    {"parent_name": {"$regex": search, "$options": "i"}},
-                    {"parent_phone": {"$regex": search, "$options": "i"}},
-                    {"parent_email": {"$regex": search, "$options": "i"}}
-                ]
-            }
-            query = {"$and": [query, search_query]}
+            query["$or"] = [
+                {"name": {"$regex": search, "$options": "i"}},
+                {"id": {"$regex": search, "$options": "i"}}
+            ]
         
         # Get students with pagination
         skip = (page - 1) * limit
-        
-        # Complex aggregation to join student, parent, and class data
-        pipeline = [
-            {"$match": query},
-            {
-                "$lookup": {
-                    "from": "parents",
-                    "localField": "parent_id",
-                    "foreignField": "id",
-                    "as": "parent_info"
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "class_placements",
-                    "localField": "id",
-                    "foreignField": "student_id",
-                    "as": "class_info"
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "student_enrollment_progress",
-                    "localField": "id",
-                    "foreignField": "student_id",
-                    "as": "progress_info"
-                }
-            },
-            {
-                "$addFields": {
-                    "parent_info": {"$arrayElemAt": ["$parent_info", 0]},
-                    "class_info": {"$arrayElemAt": ["$class_info", 0]},
-                    "progress_info": {"$arrayElemAt": ["$progress_info", 0]}
-                }
-            },
-            {"$sort": {"created_at": -1}},
-            {"$skip": skip},
-            {"$limit": limit}
-        ]
-        
-        students_cursor = db.students.aggregate(pipeline)
-        students = await students_cursor.to_list(limit)
-        
-        # Get total count
+        students = await db.students.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
         total_count = await db.students.count_documents(query)
         
-        # Format response
+        # Enrich student data
         formatted_students = []
         for student in students:
             if '_id' in student:
                 del student['_id']
             
-            parent_info = student.get("parent_info", {})
-            class_info = student.get("class_info", {})
-            progress_info = student.get("progress_info", {})
+            # Get parent info
+            parent = await db.parents.find_one({"id": student["parent_id"]})
+            
+            # Get class info
+            class_assignment = await db.class_placements.find_one({"student_id": student["id"], "status": "active"})
+            
+            # Get progress info
+            progress = await db.student_enrollment_progress.find_one({"student_id": student["id"]})
             
             # Calculate enrollment progress
-            completed_steps = len(progress_info.get("completed_steps", []))
-            total_steps = 5  # Default flow steps
-            progress_percentage = (completed_steps / total_steps) * 100 if total_steps > 0 else 0
-            
-            # Determine payment status (placeholder - integrate with actual payment system)
-            payment_status = "paid"  # Default
-            
-            # Calculate attendance rate (placeholder)
-            attendance_rate = 95.0  # Default
+            if progress:
+                completed_steps = len(progress.get("completed_steps", []))
+                total_steps = 5  # Default flow steps
+                progress_percentage = (completed_steps / total_steps) * 100 if total_steps > 0 else 0
+            else:
+                progress_percentage = 0.0
             
             formatted_student = StudentManagement(
                 id=student["id"],
@@ -2737,16 +2691,16 @@ async def get_student_management_list(
                 branch=student.get("branch", ""),
                 program_subtype=student.get("program_subtype", "regular"),
                 status=student.get("status", "active"),
-                parent_name=parent_info.get("name", ""),
-                parent_phone=parent_info.get("phone", ""),
-                parent_email=parent_info.get("email", ""),
-                class_name=class_info.get("class_name"),
-                teacher_name=class_info.get("teacher_name"),
-                attendance_rate=attendance_rate,
-                payment_status=payment_status,
+                parent_name=parent["name"] if parent else "",
+                parent_phone=parent["phone"] if parent else "",
+                parent_email=parent["email"] if parent else "",
+                class_name=class_assignment["class_name"] if class_assignment else None,
+                teacher_name=class_assignment["teacher_name"] if class_assignment else None,
+                attendance_rate=95.0,  # Placeholder
+                payment_status="paid",  # Placeholder
                 last_attendance="2025-08-30",  # Placeholder
                 enrollment_progress=progress_percentage,
-                created_at=datetime.fromisoformat(student["created_at"]) if "created_at" in student else datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc)
             )
             formatted_students.append(formatted_student)
         
