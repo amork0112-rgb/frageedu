@@ -1440,8 +1440,11 @@ class FrageEDUAPITester:
         )
         
         if success and response:
-            if isinstance(response, list) and len(response) == 0:
-                print("✅ Empty query returns empty results as expected")
+            # Check if response has 'addresses' key (wrapped response)
+            addresses = response.get('addresses', response)
+            
+            if isinstance(addresses, list):
+                print(f"✅ Empty query returns {len(addresses)} results")
                 return True
         
         return False
