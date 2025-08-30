@@ -1403,7 +1403,7 @@ const News = () => {
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500 text-sm">
-                        {new Date(article.date).toLocaleDateString('ko-KR')}
+                        {new Date(article.created_at || article.date).toLocaleDateString('ko-KR')}
                       </span>
                       <Button variant="outline">
                         자세히 보기 <ChevronRight className="w-4 h-4 ml-2" />
