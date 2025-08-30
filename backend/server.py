@@ -3801,6 +3801,52 @@ async def send_alimtalk_notification(student_id: str, template_type: str, data: 
     
     print(f"AlimTalk notification queued: {template_type} to {parent.get('phone', 'N/A')} for student {student['name']}")
 
+async def can_access_branch(admin_user_id: str, admin_role: str, branch: str) -> bool:
+    """Check if admin user can access specific branch"""
+    if admin_role == "super_admin":
+        return True
+    
+    # Check user's allowed branches
+    allowed_branches = await get_allowed_branches(admin_user_id)
+    return branch in allowed_branches
+
+async def send_status_change_notification(student_id: str, notification_type: str, data: Dict = None):
+    """Send notification when student status changes"""
+    try:
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            return
+        
+        parent = await db.parents.find_one({"id": student["parent_id"]})
+        if not parent:
+            return
+        
+        notification_templates = {
+            "admission_approved": "입학 승인되었습니다. 반 배정 안내를 기다려 주세요.",
+            "class_assigned": f"반 배정이 완료되었습니다. 담임교사: {data.get('teacher', 'N/A')}",
+            "status_leave": "휴학 처리가 완료되었습니다.",
+            "status_withdrawn": "퇴원 처리가 완료되었습니다."
+        }
+        
+        message = notification_templates.get(notification_type, f"상태가 변경되었습니다.")
+        
+        # Log notification (actual AlimTalk integration would go here)
+        notification_log = {
+            "student_id": student_id,
+            "parent_phone": parent.get("phone", ""),
+            "notification_type": notification_type,
+            "message": message,
+            "data": data or {},
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.notification_logs.insert_one(notification_log)
+        print(f"Status change notification queued: {notification_type} for student {student['name']}")
+        
+    except Exception as e:
+        print(f"Error sending status change notification: {str(e)}")
+
 @api_router.post("/signup")
 async def signup(user_data: UserCreate):
     if not user_data.terms_accepted:
