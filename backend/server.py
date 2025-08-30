@@ -794,7 +794,9 @@ class PasswordResetConfirm(BaseModel):
     new_password: str
 
 class FindUsernameRequest(BaseModel):
-    email: str
+    parent_name: str
+    student_name: str
+    student_birthdate: str  # YYYY-MM-DD format
 
 class PasswordResetToken(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
