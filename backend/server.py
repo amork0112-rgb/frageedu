@@ -1054,17 +1054,31 @@ async def reset_member_password(user_id: str, current_admin: AdminResponse = Dep
         "temporary_password": temp_password  # In production, this should be sent via email
     }
 
-@api_router.put("/admin/user/{user_id}/deactivate")
-async def deactivate_user(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
+@api_router.patch("/admin/members/{user_id}/status")
+async def update_member_status(user_id: str, status_data: Dict[str, str], current_admin: AdminResponse = Depends(get_current_admin)):
+    status = status_data.get("status")
+    if status not in ["active", "disabled"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Must be 'active' or 'disabled'")
+    
     result = await db.users.update_one(
         {"id": user_id},
-        {"$set": {"active": False, "deactivated_at": datetime.now(timezone.utc).isoformat(), "deactivated_by": current_admin.id}}
+        {"$set": {"status": status}}
     )
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {"message": "User deactivated successfully"}
+    # Log audit action
+    action = "ENABLE" if status == "active" else "DISABLE"
+    await log_audit(
+        actor_user_id=current_admin.id,
+        action=action,
+        target_type="User",
+        target_id=user_id,
+        meta={"admin_username": current_admin.username, "new_status": status}
+    )
+    
+    return {"message": f"User status updated to {status}"}
 
 # Admin Admission Management Routes
 @api_router.get("/admin/admissions")
