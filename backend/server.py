@@ -2046,6 +2046,482 @@ async def get_progress_report(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching progress report: {str(e)}")
 
+@api_router.get("/parent/dashboard/comprehensive")
+async def get_comprehensive_dashboard(
+    studentId: Optional[str] = None,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Get comprehensive card-based parent dashboard"""
+    try:
+        # Get parent info
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        # Get all students for dropdown
+        students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+        
+        if not students:
+            raise HTTPException(status_code=404, detail="No students found")
+        
+        # Determine target student
+        target_student = None
+        if studentId:
+            target_student = next((s for s in students if s["id"] == studentId), None)
+            if not target_student:
+                raise HTTPException(status_code=404, detail="Student not found")
+        else:
+            target_student = students[0]  # Default to first student
+        
+        # Clean student data
+        for student in students:
+            if '_id' in student:
+                del student['_id']
+        
+        if '_id' in target_student:
+            del target_student['_id']
+        
+        # Build student info list for dropdown
+        student_info_list = []
+        for student in students:
+            program_display = await get_program_display_name(
+                student.get("branch", ""), 
+                student.get("program_subtype", "regular")
+            )
+            
+            student_info = StudentInfo(
+                id=student["id"],
+                name=student["name"],
+                grade=student.get("grade", ""),
+                birthdate=student.get("birthdate"),
+                branch=student.get("branch", ""),
+                program_subtype=student.get("program_subtype", "regular"),
+                requires_exam=student.get("requires_exam", True),
+                program_display=program_display
+            )
+            student_info_list.append(student_info)
+        
+        # Build comprehensive dashboard for target student
+        target_student_info = next((s for s in student_info_list if s.id == target_student["id"]), student_info_list[0])
+        
+        # Build all dashboard cards
+        admission_progress = await build_admission_progress_card(target_student["id"])
+        exam_card = await build_exam_card(target_student["id"], target_student)
+        timetable_card = await build_timetable_card(target_student["id"])
+        homework_card = await build_homework_card(target_student["id"])
+        attendance_card = await build_attendance_card(target_student["id"])
+        billing_card = await build_billing_card(target_student["id"], parent["household_token"])
+        notices_card = await build_notices_card(target_student["id"], target_student)
+        resources_card = await build_resources_card(target_student["id"], parent["household_token"], target_student)
+        
+        # Build dashboard cards response
+        dashboard_cards = DashboardCardsResponse(
+            student_info=target_student_info,
+            admission_progress=admission_progress,
+            exam=exam_card,
+            timetable=timetable_card,
+            homework=homework_card,
+            attendance=attendance_card,
+            billing=billing_card,
+            notices=notices_card,
+            resources=resources_card
+        )
+        
+        # Get global notifications (urgent notices, overdue items)
+        global_notifications = []
+        
+        # Add urgent notices
+        if notices_card.urgent_count > 0:
+            global_notifications.append({
+                "type": "urgent_notice",
+                "message": f"{notices_card.urgent_count}개의 긴급 공지사항이 있습니다",
+                "action": "view_notices",
+                "priority": "high"
+            })
+        
+        # Add overdue payments
+        if billing_card.overdue_count > 0:
+            global_notifications.append({
+                "type": "overdue_payment",
+                "message": f"{billing_card.overdue_count}개의 미납 결제가 있습니다",
+                "action": "view_billing",
+                "priority": "high"
+            })
+        
+        # Add overdue homework
+        if homework_card.overdue_count > 0:
+            global_notifications.append({
+                "type": "overdue_homework",
+                "message": f"{homework_card.overdue_count}개의 미제출 과제가 있습니다",
+                "action": "view_homework",
+                "priority": "medium"
+            })
+        
+        # Add required guides pending
+        if resources_card.required_guides_pending > 0:
+            global_notifications.append({
+                "type": "required_guides",
+                "message": f"{resources_card.required_guides_pending}개의 필독 가이드를 확인하세요",
+                "action": "view_guides",
+                "priority": "medium"
+            })
+        
+        return ComprehensiveDashboardResponse(
+            parent_info={
+                "name": current_user.name,
+                "email": current_user.email,
+                "phone": current_user.phone,
+                "branch": parent.get("branch", ""),
+                "household_token": parent["household_token"]
+            },
+            students=student_info_list,
+            current_student=dashboard_cards,
+            global_notifications=global_notifications
+        )
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching comprehensive dashboard: {str(e)}")
+
+@api_router.post("/parent/exam/reserve")
+async def reserve_exam(
+    reservation_request: ExamReservationRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Reserve an exam slot for a student"""
+    try:
+        # Verify student belongs to parent
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        student = await db.students.find_one({"id": reservation_request.student_id, "parent_id": parent["id"]})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Check if student should have exam
+        if not await should_show_exam_card(student):
+            raise HTTPException(status_code=400, detail="Exam not required for this student")
+        
+        # Check for existing reservation
+        existing = await db.exam_reservations.find_one({
+            "student_id": reservation_request.student_id,
+            "status": "scheduled"
+        })
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Active reservation already exists")
+        
+        # Create reservation
+        reservation = ExamReservation(
+            student_id=reservation_request.student_id,
+            household_token=parent["household_token"],
+            branch_type=reservation_request.branch_type,
+            exam_date=reservation_request.exam_date,
+            exam_time=reservation_request.exam_time,
+            notes=reservation_request.notes
+        )
+        
+        reservation_dict = reservation.dict()
+        reservation_dict['created_at'] = reservation_dict['created_at'].isoformat()
+        reservation_dict['updated_at'] = reservation_dict['updated_at'].isoformat()
+        
+        await db.exam_reservations.insert_one(reservation_dict)
+        
+        # Trigger flow event
+        await trigger_flow_event(
+            reservation_request.student_id,
+            "exam.scheduled",
+            "consultation",
+            {
+                "exam_date": reservation_request.exam_date,
+                "exam_time": reservation_request.exam_time,
+                "branch_type": reservation_request.branch_type
+            },
+            f"parent:{current_user.id}"
+        )
+        
+        return {"message": "Exam reservation successful", "reservation_id": reservation.id}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error creating reservation: {str(e)}")
+
+@api_router.get("/parent/homework")
+async def get_homework_list(
+    current_user: UserResponse = Depends(get_current_user),
+    student_id: Optional[str] = None,
+    status: Optional[str] = None,  # pending, submitted, graded, overdue
+    page: int = 1,
+    limit: int = 20
+):
+    """Get homework list for student"""
+    try:
+        # Get parent and students
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+        if not students:
+            raise HTTPException(status_code=404, detail="No students found")
+        
+        # Determine target student
+        if student_id:
+            target_student = next((s for s in students if s["id"] == student_id), None)
+            if not target_student:
+                raise HTTPException(status_code=404, detail="Student not found")
+        else:
+            target_student = students[0]
+        
+        # Get class assignment
+        assignment = await db.class_placements.find_one({
+            "student_id": target_student["id"], 
+            "status": "active"
+        })
+        
+        if not assignment:
+            return {
+                "homework_list": [],
+                "pagination": {"page": page, "limit": limit, "total": 0, "total_pages": 0}
+            }
+        
+        # Build query
+        query = {"class_assignment_id": assignment["id"]}
+        
+        # Get homework
+        skip = (page - 1) * limit
+        homework_list = await db.homeworks.find(query).sort("due_date", -1).skip(skip).limit(limit).to_list(limit)
+        total_count = await db.homeworks.count_documents(query)
+        
+        # Get submissions
+        submission_query = {"student_id": target_student["id"]}
+        submissions = await db.homework_submissions.find(submission_query).to_list(1000)
+        submission_map = {sub["homework_id"]: sub for sub in submissions}
+        
+        # Build response
+        homework_response = []
+        now = datetime.now(timezone.utc)
+        
+        for hw in homework_list:
+            if '_id' in hw:
+                del hw['_id']
+            
+            submission = submission_map.get(hw["id"])
+            hw_status = "not_started"
+            is_overdue = False
+            
+            if submission:
+                hw_status = submission["status"]
+            
+            if hw["due_date"] < now and hw_status not in ["submitted", "graded"]:
+                is_overdue = True
+                hw_status = "overdue"
+            
+            # Filter by status if requested
+            if status and hw_status != status:
+                continue
+            
+            homework_response.append({
+                **hw,
+                "status": hw_status,
+                "is_overdue": is_overdue,
+                "submission": submission,
+                "due_date": hw["due_date"].isoformat(),
+                "created_at": hw["created_at"].isoformat()
+            })
+        
+        return {
+            "homework_list": homework_response,
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "total_pages": (total_count + limit - 1) // limit
+            }
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching homework: {str(e)}")
+
+@api_router.post("/parent/homework/{homework_id}/submit")
+async def submit_homework(
+    homework_id: str,
+    submission_request: HomeworkSubmissionRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Submit homework assignment"""
+    try:
+        # Verify homework exists
+        homework = await db.homeworks.find_one({"id": homework_id})
+        if not homework:
+            raise HTTPException(status_code=404, detail="Homework not found")
+        
+        # Get parent and student
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        # Get class assignment to verify student
+        assignment = await db.class_placements.find_one({"id": homework["class_assignment_id"]})
+        if not assignment:
+            raise HTTPException(status_code=404, detail="Class assignment not found")
+        
+        student = await db.students.find_one({
+            "id": assignment["student_id"], 
+            "parent_id": parent["id"]
+        })
+        if not student:
+            raise HTTPException(status_code=403, detail="Not authorized for this homework")
+        
+        # Check if already submitted
+        existing = await db.homework_submissions.find_one({
+            "homework_id": homework_id,
+            "student_id": student["id"],
+            "status": {"$in": ["submitted", "graded"]}
+        })
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Homework already submitted")
+        
+        # Create or update submission
+        now = datetime.now(timezone.utc)
+        submission_data = {
+            "homework_id": homework_id,
+            "student_id": student["id"],
+            "status": "submitted",
+            "submission_text": submission_request.submission_text,
+            "file_urls": submission_request.file_urls,
+            "submitted_at": now,
+            "updated_at": now
+        }
+        
+        # Check if draft exists
+        draft = await db.homework_submissions.find_one({
+            "homework_id": homework_id,
+            "student_id": student["id"],
+            "status": "pending"
+        })
+        
+        if draft:
+            # Update existing draft
+            await db.homework_submissions.update_one(
+                {"id": draft["id"]},
+                {"$set": submission_data}
+            )
+            submission_id = draft["id"]
+        else:
+            # Create new submission
+            submission = HomeworkSubmission(**submission_data)
+            submission_dict = submission.dict()
+            submission_dict['created_at'] = submission_dict['created_at'].isoformat()
+            submission_dict['submitted_at'] = submission_dict['submitted_at'].isoformat()
+            submission_dict['updated_at'] = now.isoformat()
+            
+            await db.homework_submissions.insert_one(submission_dict)
+            submission_id = submission.id
+        
+        return {"message": "Homework submitted successfully", "submission_id": submission_id}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error submitting homework: {str(e)}")
+
+@api_router.post("/parent/notices/acknowledge")
+async def acknowledge_notices(
+    ack_request: NoticeAcknowledgmentRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Mark notices as read/acknowledged"""
+    try:
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+        if not students:
+            raise HTTPException(status_code=404, detail="No students found")
+        
+        # For now, acknowledge for first student (can be extended)
+        student = students[0]
+        
+        acknowledged_count = 0
+        now = datetime.now(timezone.utc)
+        
+        for notice_id in ack_request.notice_ids:
+            # Check if already acknowledged
+            existing = await db.notice_acknowledgments.find_one({
+                "notice_id": notice_id,
+                "student_id": student["id"]
+            })
+            
+            if existing:
+                # Update existing
+                await db.notice_acknowledgments.update_one(
+                    {"id": existing["id"]},
+                    {
+                        "$set": {
+                            "acknowledged": True,
+                            "acknowledged_at": now.isoformat()
+                        }
+                    }
+                )
+            else:
+                # Create new acknowledgment
+                ack = NoticeAcknowledgment(
+                    notice_id=notice_id,
+                    student_id=student["id"],
+                    household_token=parent["household_token"],
+                    acknowledged=True,
+                    acknowledged_at=now
+                )
+                
+                ack_dict = ack.dict()
+                ack_dict['created_at'] = ack_dict['created_at'].isoformat()
+                ack_dict['acknowledged_at'] = ack_dict['acknowledged_at'].isoformat()
+                
+                await db.notice_acknowledgments.insert_one(ack_dict)
+            
+            acknowledged_count += 1
+        
+        return {"message": f"Acknowledged {acknowledged_count} notices"}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error acknowledging notices: {str(e)}")
+
+async def send_alimtalk_notification(student_id: str, template_type: str, data: Dict = None):
+    """Send AlimTalk notification (placeholder for integration)"""
+    # TODO: Integrate with Solapi AlimTalk API
+    # For now, just log the notification
+    
+    student = await db.students.find_one({"id": student_id})
+    if not student:
+        return
+    
+    parent = await db.parents.find_one({"id": student["parent_id"]})
+    if not parent:
+        return
+    
+    notification_log = {
+        "student_id": student_id,
+        "parent_phone": parent.get("phone", ""),
+        "template_type": template_type,
+        "data": data or {},
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.notification_logs.insert_one(notification_log)
+    
+    print(f"AlimTalk notification queued: {template_type} to {parent.get('phone', 'N/A')} for student {student['name']}")
+
 @api_router.post("/signup")
 async def signup(user_data: UserCreate):
     if not user_data.terms_accepted:
