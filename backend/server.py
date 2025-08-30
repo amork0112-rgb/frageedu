@@ -135,6 +135,74 @@ class ExamReservationCreate(BaseModel):
     level_track: Optional[str] = None
     notes: Optional[str] = None
 
+# Admin Models
+class Admin(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    username: str
+    email: str
+    password_hash: str
+    role: str = "admin"  # admin, super_admin
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_login: Optional[datetime] = None
+
+class AdminCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class AdminLogin(BaseModel):
+    username: str
+    password: str
+
+class AdminResponse(BaseModel):
+    id: str
+    username: str
+    email: str
+    role: str
+    created_at: datetime
+    last_login: Optional[datetime]
+
+# News Models
+class NewsArticle(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    content: str
+    category: str  # 개강소식, 공지사항, 뉴스
+    image_url: Optional[str] = None
+    featured: bool = False
+    published: bool = True
+    created_by: str  # admin_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class NewsArticleCreate(BaseModel):
+    title: str
+    content: str
+    category: str
+    image_url: Optional[str] = None
+    featured: bool = False
+    published: bool = True
+
+class NewsArticleUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    category: Optional[str] = None
+    image_url: Optional[str] = None
+    featured: Optional[bool] = None
+    published: Optional[bool] = None
+
+class NewsResponse(BaseModel):
+    id: str
+    title: str
+    content: str
+    category: str
+    image_url: Optional[str]
+    featured: bool
+    published: bool
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
 # Utility functions
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
