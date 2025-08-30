@@ -182,18 +182,18 @@ backend:
 
   - task: "Implement GET /admin/members/:id for detailed member profile"
     implemented: true
-    working: false
+    working: "NA"
     file: "backend/server.py"
-    stuck_count: 1
+    stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Added member detail endpoint showing user profile, parent info, students list, admission data, exam reservations with status badges."
       - working: false
         agent: "testing"
-        comment: "❌ FAILED - 500 Internal Server Error. MongoDB ObjectId serialization issue: 'ObjectId' object is not iterable. Likely caused by ObjectId fields in database records that can't be JSON serialized. Need to convert ObjectIds to strings or exclude them from response."
+        comment: "ObjectId serialization error causing 500 response"
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed ObjectId serialization by removing _id fields from all MongoDB documents before JSON response. Added proper data cleaning for user, parent, students, admission_data, exam_reservations."
 
   - task: "Implement POST /admin/members/:id/reset-password with audit logging"
     implemented: true
