@@ -2486,6 +2486,241 @@ const WelcomeAdmissionGuide = () => {
     );
   }
 
+  const branchInfo = {
+    'kinder': { name: '유치부', age: '5-7세', color: 'bg-pink-100 text-pink-800' },
+    'junior': { name: '초등부', age: '8-12세', color: 'bg-blue-100 text-blue-800' },
+    'middle': { name: '중등부', age: '13-16세', color: 'bg-purple-100 text-purple-800' }
+  };
+
+  const currentBranch = branchInfo[parentInfo?.parent_info?.branch] || branchInfo['junior'];
+  const enrollmentStatus = parentInfo?.enrollment_status || 'new';
+
+  // For new members (consultation/exam reservation phase)
+  if (enrollmentStatus === 'new' || enrollmentStatus === 'test_scheduled' || enrollmentStatus === 'test_taken') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
+        <Header />
+        
+        <div className="pt-20 pb-16">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Welcome Section for New Members */}
+            <div className="text-center mb-12">
+              <div className="mb-6">
+                <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Star className="w-10 h-10 text-white" />
+                </div>
+              </div>
+              
+              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+                🎉 환영합니다!
+              </h1>
+              
+              <p className="text-xl text-gray-600 mb-2">
+                <span className="font-semibold text-purple-600">{parentInfo?.parent_info?.name}</span>님, 
+                <span className="font-semibold"> Frage EDU</span>에 가입해주셔서 감사합니다
+              </p>
+              
+              <div className="flex items-center justify-center space-x-4 mb-6">
+                <Badge className={currentBranch.color}>
+                  {currentBranch.name} ({currentBranch.age})
+                </Badge>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-600">학생: {parentInfo?.students?.[0]?.name}</span>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-purple-500 mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  📞 이제 상담 예약을 해보세요!
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Frage EDU의 전문 상담사가 {currentBranch.name} 과정에 대해 자세히 안내해드립니다.
+                  상담 후 레벨테스트 또는 입학시험 일정을 잡으실 수 있습니다.
+                </p>
+                <div className="text-sm text-purple-700 bg-purple-50 p-3 rounded-lg">
+                  💡 <strong>참고:</strong> 입학 관련 서류 작성은 상담 및 시험 후 별도 안내드립니다.
+                </div>
+              </div>
+            </div>
+
+            {/* Next Steps for New Members */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+              {/* Consultation Booking */}
+              <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-blue-50 border-blue-200">
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center shadow-md">
+                        <Phone className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                        1단계. 상담 예약
+                      </h3>
+                      <p className="text-sm text-blue-700 mb-4">
+                        전화 또는 방문 상담을 통해 자녀에게 맞는 프로그램을 안내받으세요
+                      </p>
+                      <div className="space-y-2 mb-4 text-sm text-blue-600">
+                        <p>📞 전화: 053-754-0577</p>
+                        <p>📧 이메일: frage0577@gmail.com</p>
+                        <p>🕐 상담시간: 평일 9:00-18:00</p>
+                      </div>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                        전화 상담 예약
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Test Reservation (for Junior/Middle) */}
+              {(currentBranch.name === '초등부' || currentBranch.name === '중등부') && (
+                <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-green-50 border-green-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center shadow-md">
+                          <Calendar className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-green-900 mb-2">
+                          2단계. 입학시험 예약
+                        </h3>
+                        <p className="text-sm text-green-700 mb-4">
+                          {currentBranch.name} 입학시험을 통해 적정 레벨을 확인합니다
+                        </p>
+                        <Button 
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => window.location.href = `/exam/reserve?brchType=${parentInfo?.parent_info?.branch}`}
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          입학시험 예약하기
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Kindergarten Info */}
+              {currentBranch.name === '유치부' && (
+                <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-pink-50 border-pink-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-pink-600 flex items-center justify-center shadow-md">
+                          <Users className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-pink-900 mb-2">
+                          2단계. 레벨테스트 예약
+                        </h3>
+                        <p className="text-sm text-pink-700 mb-4">
+                          유치부는 재미있는 레벨테스트를 통해 적정 반을 배정합니다
+                        </p>
+                        <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white">
+                          <Users className="w-4 h-4 mr-2" />
+                          레벨테스트 상담
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Information Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+              <Card className="bg-white shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Info className="w-5 h-5 text-blue-600" />
+                    <span>다음 단계 안내</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">상담 및 시험 후</p>
+                        <p className="text-sm text-gray-600">입학이 확정되면 관리자가 입학 절차를 활성화해드립니다</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">입학 서류 작성</p>
+                        <p className="text-sm text-gray-600">동의서, 서류 제출, 안내사항 확인을 진행하게 됩니다</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">수업 시작</p>
+                        <p className="text-sm text-gray-600">모든 절차 완료 후 정규 수업에 참여하실 수 있습니다</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MessageCircle className="w-5 h-5" />
+                    <span>문의 및 상담</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-medium mb-2">📞 전화 상담</p>
+                      <p className="text-sm text-purple-100 mb-1">053-754-0577</p>
+                      <p className="text-sm text-purple-100">평일 9:00-18:00 / 토요일 9:00-15:00</p>
+                    </div>
+                    <div>
+                      <p className="font-medium mb-2">📧 이메일 문의</p>
+                      <p className="text-sm text-purple-100">frage0577@gmail.com</p>
+                    </div>
+                    <div>
+                      <p className="font-medium mb-2">🏢 방문 상담</p>
+                      <p className="text-sm text-purple-100">대구 수성구 범어천로 167 3-4층</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Navigation */}
+            <div className="text-center">
+              <Button 
+                onClick={() => window.location.href = '/parent/dashboard'}
+                variant="outline"
+                className="mr-4"
+              >
+                <ChevronLeft className="w-4 h-4 mr-2" />
+                부모 대시보드로
+              </Button>
+              <Button 
+                onClick={() => window.location.href = '/programs'}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <BookOpen className="w-4 h-4 mr-2" />
+                프로그램 더 보기
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <Footer />
+      </div>
+    );
+  }
+
+  // For enrolled members (admission process phase)
   const admissionSteps = [
     {
       id: 1,
@@ -2521,35 +2756,27 @@ const WelcomeAdmissionGuide = () => {
     }
   ];
 
-  const branchInfo = {
-    'kinder': { name: '유치부', age: '5-7세', color: 'bg-pink-100 text-pink-800' },
-    'junior': { name: '초등부', age: '8-12세', color: 'bg-blue-100 text-blue-800' },
-    'middle': { name: '중등부', age: '13-16세', color: 'bg-purple-100 text-purple-800' }
-  };
-
-  const currentBranch = branchInfo[parentInfo?.parent_info?.branch] || branchInfo['junior'];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
       <Header />
       
       <div className="pt-20 pb-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Welcome Section */}
+          {/* Welcome Section for Enrolled Members */}
           <div className="text-center mb-12">
             <div className="mb-6">
-              <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Star className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-r from-green-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-10 h-10 text-white" />
               </div>
             </div>
             
             <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              🎉 환영합니다!
+              🎓 입학이 확정되었습니다!
             </h1>
             
             <p className="text-xl text-gray-600 mb-2">
               <span className="font-semibold text-purple-600">{parentInfo?.parent_info?.name}</span>님, 
-              <span className="font-semibold"> Frage EDU</span>에 가입해주셔서 감사합니다
+              이제 입학 절차를 완료해주세요
             </p>
             
             <div className="flex items-center justify-center space-x-4 mb-6">
@@ -2560,9 +2787,9 @@ const WelcomeAdmissionGuide = () => {
               <span className="text-gray-600">학생: {parentInfo?.students?.[0]?.name}</span>
             </div>
 
-            <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-purple-500 mb-8">
+            <div className="bg-white rounded-lg p-6 shadow-lg border-l-4 border-green-500 mb-8">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                🚀 이제 입학 절차를 시작해보세요!
+                📋 입학 서류 작성을 시작하세요!
               </h3>
               <p className="text-gray-600">
                 아래 4단계를 순서대로 완료하시면 입학 절차가 마무리됩니다.
@@ -2571,7 +2798,7 @@ const WelcomeAdmissionGuide = () => {
             </div>
           </div>
 
-          {/* Admission Steps */}
+          {/* Admission Steps for Enrolled Members */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             {admissionSteps.map((step, index) => {
               const Icon = step.icon;
@@ -2614,119 +2841,8 @@ const WelcomeAdmissionGuide = () => {
             })}
           </div>
 
-          {/* Additional Information */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-            <Card className="bg-white shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Info className="w-5 h-5 text-blue-600" />
-                  <span>입학 안내</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                    <div>
-                      <p className="font-medium text-gray-900">필수 서류</p>
-                      <p className="text-sm text-gray-600">주민등록등본, 학생 건강검진결과서, 예방접종증명서</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                    <div>
-                      <p className="font-medium text-gray-900">입학 일정</p>
-                      <p className="text-sm text-gray-600">서류 제출 완료 후 2-3일 내 입학 확정 통보</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                    <div>
-                      <p className="font-medium text-gray-900">문의사항</p>
-                      <p className="text-sm text-gray-600">053-754-0577 또는 frage0577@gmail.com</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Lightbulb className="w-5 h-5" />
-                  <span>도움말</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="font-medium mb-2">💡 진행 상황 저장</p>
-                    <p className="text-sm text-purple-100">
-                      각 단계를 완료하면 자동으로 저장되어 언제든지 이어서 진행할 수 있습니다.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium mb-2">📱 모바일 지원</p>
-                    <p className="text-sm text-purple-100">
-                      모바일에서도 편리하게 입학 절차를 진행하실 수 있습니다.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="font-medium mb-2">🔒 개인정보 보호</p>
-                    <p className="text-sm text-purple-100">
-                      모든 개인정보는 안전하게 암호화되어 보호됩니다.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <Card className="bg-white shadow-lg">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">
-                바로 시작하기
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button 
-                  variant="outline" 
-                  className="flex flex-col items-center p-4 h-auto space-y-2"
-                  onClick={() => window.location.href = `/consent?id=${parentInfo?.parent_info?.household_token}`}
-                >
-                  <FileText className="w-6 h-6 text-purple-600" />
-                  <span className="text-sm">동의서</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex flex-col items-center p-4 h-auto space-y-2"
-                  onClick={() => window.location.href = `/form?id=${parentInfo?.parent_info?.household_token}`}
-                >
-                  <Upload className="w-6 h-6 text-green-600" />
-                  <span className="text-sm">서류제출</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex flex-col items-center p-4 h-auto space-y-2"
-                  onClick={() => window.location.href = `/guide?id=${parentInfo?.parent_info?.household_token}`}
-                >
-                  <BookOpen className="w-6 h-6 text-blue-600" />
-                  <span className="text-sm">안내확인</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex flex-col items-center p-4 h-auto space-y-2"
-                  onClick={() => window.location.href = `/checklist?id=${parentInfo?.parent_info?.household_token}`}
-                >
-                  <CheckCircle className="w-6 h-6 text-orange-600" />
-                  <span className="text-sm">체크리스트</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Navigation */}
-          <div className="text-center mt-8">
+          {/* Navigation for Enrolled Members */}
+          <div className="text-center">
             <Button 
               onClick={() => window.location.href = '/parent/dashboard'}
               variant="outline"
@@ -2737,7 +2853,7 @@ const WelcomeAdmissionGuide = () => {
             </Button>
             <Button 
               onClick={() => window.location.href = `/consent?id=${parentInfo?.parent_info?.household_token}`}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-green-600 hover:bg-green-700"
             >
               입학 절차 시작하기
               <ArrowRight className="w-4 h-4 ml-2" />
