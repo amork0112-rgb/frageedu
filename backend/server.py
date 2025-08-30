@@ -2599,6 +2599,123 @@ async def acknowledge_notices(
             raise e
         raise HTTPException(status_code=500, detail=f"Error acknowledging notices: {str(e)}")
 
+@api_router.post("/admin/create-sample-data")
+async def create_sample_student_data(current_admin: AdminResponse = Depends(get_current_admin)):
+    """Create sample student data for testing (admin only)"""
+    try:
+        if current_admin.role not in ["admin", "super_admin"]:
+            raise HTTPException(status_code=403, detail="Only admin can create sample data")
+        
+        # Check if we already have students
+        existing_count = await db.students.count_documents({})
+        if existing_count > 0:
+            return {"message": f"Sample data not created - {existing_count} students already exist"}
+        
+        # Create sample parents and students
+        sample_families = [
+            {
+                "parent": {
+                    "name": "김영희", 
+                    "email": "kim.younghee@example.com", 
+                    "phone": "010-1234-5678",
+                    "branch": "kinder"
+                },
+                "students": [
+                    {"name": "김민수", "grade": "K1", "branch": "kinder", "program_subtype": "regular", "birthdate": "2019-03-15"}
+                ]
+            },
+            {
+                "parent": {
+                    "name": "이철수", 
+                    "email": "lee.chulsoo@example.com", 
+                    "phone": "010-2345-6789",
+                    "branch": "junior"
+                },
+                "students": [
+                    {"name": "이소영", "grade": "G2", "branch": "junior", "program_subtype": "regular", "birthdate": "2015-07-22"}
+                ]
+            },
+            {
+                "parent": {
+                    "name": "박지현", 
+                    "email": "park.jihyun@example.com", 
+                    "phone": "010-3456-7890",
+                    "branch": "middle"
+                },
+                "students": [
+                    {"name": "박준호", "grade": "G6", "branch": "middle", "program_subtype": "regular", "birthdate": "2012-11-08"}
+                ]
+            },
+            {
+                "parent": {
+                    "name": "최미나", 
+                    "email": "choi.mina@example.com", 
+                    "phone": "010-4567-8901",
+                    "branch": "kinder"
+                },
+                "students": [
+                    {"name": "최하윤", "grade": "K2", "branch": "kinder", "program_subtype": "kinder_single", "birthdate": "2018-05-30"}
+                ]
+            }
+        ]
+        
+        created_students = 0
+        created_parents = 0
+        
+        for family in sample_families:
+            # Create user
+            user = User(
+                email=family["parent"]["email"],
+                phone=family["parent"]["phone"],
+                name=family["parent"]["name"],
+                password_hash=hash_password("Test123!")  # Default password for test data
+            )
+            user_dict = user.dict()
+            user_dict['created_at'] = user_dict['created_at'].isoformat()
+            user_dict['last_login_at'] = None
+            await db.users.insert_one(user_dict)
+            
+            # Create parent
+            parent = Parent(
+                user_id=user.id,
+                name=family["parent"]["name"],
+                phone=family["parent"]["phone"],
+                email=family["parent"]["email"],
+                branch=family["parent"]["branch"],
+                household_token=user.household_token
+            )
+            parent_dict = parent.dict()
+            parent_dict['created_at'] = parent_dict['created_at'].isoformat()
+            await db.parents.insert_one(parent_dict)
+            created_parents += 1
+            
+            # Create students
+            for student_data in family["students"]:
+                student = Student(
+                    parent_id=parent.id,
+                    name=student_data["name"],
+                    grade=student_data["grade"],
+                    birthdate=student_data["birthdate"],
+                    branch=student_data["branch"],
+                    program_subtype=student_data["program_subtype"],
+                    requires_exam=(student_data["branch"] != "kinder"),
+                    notes=f"Sample student data created by admin {current_admin.username}"
+                )
+                student_dict = student.dict()
+                await db.students.insert_one(student_dict)
+                created_students += 1
+        
+        return {
+            "message": f"Sample data created successfully", 
+            "created_parents": created_parents,
+            "created_students": created_students
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error creating sample data: {str(e)}")
+
 @api_router.post("/admin/init-rbac")
 async def init_rbac_system(current_admin: AdminResponse = Depends(get_current_admin)):
     """Initialize RBAC system with default permissions and roles"""
