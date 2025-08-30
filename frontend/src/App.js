@@ -2778,7 +2778,7 @@ const WelcomeAdmissionGuide = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">
                   {currentBranch.name} 바로 시작하기
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className={`grid grid-cols-1 ${currentBranch.name === '유치부' ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
                   <Button 
                     variant="outline" 
                     className="flex flex-col items-center p-4 h-auto space-y-2"
@@ -2788,15 +2788,7 @@ const WelcomeAdmissionGuide = () => {
                     <span className="text-sm">전화 상담</span>
                   </Button>
                   
-                  {currentBranch.name === '유치부' ? (
-                    <Button 
-                      variant="outline" 
-                      className="flex flex-col items-center p-4 h-auto space-y-2"
-                    >
-                      <Users className="w-6 h-6 text-pink-600" />
-                      <span className="text-sm">레벨테스트 상담</span>
-                    </Button>
-                  ) : (
+                  {currentBranch.name !== '유치부' && (
                     <Button 
                       variant="outline" 
                       className="flex flex-col items-center p-4 h-auto space-y-2"
