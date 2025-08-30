@@ -98,7 +98,6 @@ const Header = () => {
               <a href="/#about" className="text-gray-700 hover:text-purple-600 transition-colors">About</a>
               <a href="/programs" className="text-gray-700 hover:text-purple-600 transition-colors">Programs</a>
               <a href="/admissions" className="text-gray-700 hover:text-purple-600 transition-colors">Admissions</a>
-              <a href="/community" className="text-gray-700 hover:text-purple-600 transition-colors">Community</a>
               <a href="/news" className="text-gray-700 hover:text-purple-600 transition-colors">News</a>
               <div className="flex flex-col space-y-2 pt-3 border-t">
                 <Button variant="ghost" onClick={() => window.location.href = '/login'}>Login</Button>
