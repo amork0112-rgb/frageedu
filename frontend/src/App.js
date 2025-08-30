@@ -2421,6 +2421,14 @@ const ParentDashboard = () => {
                     프로그램 안내
                   </Button>
                   <Button 
+                    onClick={() => window.location.href = '/market'}
+                    variant="outline" 
+                    className="w-full justify-start"
+                  >
+                    <Smartphone className="w-4 h-4 mr-2" />
+                    Frage Market
+                  </Button>
+                  <Button 
                     onClick={() => window.location.href = '/news'}
                     variant="outline" 
                     className="w-full justify-start"
