@@ -17,6 +17,271 @@ import { CheckCircle, Clock, FileText, BookOpen, ClipboardList, Users, Info, Eye
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Landing Page Component
+const LandingPage = () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Navigation */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-3">
+              <Users className="w-8 h-8 text-indigo-600" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Frage EDU</h1>
+                <p className="text-xs text-gray-500">학부모 입학 포털</p>
+              </div>
+            </div>
+            <div className="flex space-x-4">
+              <Button variant="ghost" onClick={() => window.location.href = '/login'}>
+                로그인
+              </Button>
+              <Button onClick={() => window.location.href = '/signup'}>
+                가입하기
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="pt-16 pb-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                입학 절차를<br />
+                <span className="text-indigo-600">한 번에 해결</span>하세요
+              </h1>
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                Frage EDU는 학부모님들의 복잡한 입학 절차를 간편하게 만들어드립니다. 
+                동의서부터 신청서까지, 모든 과정을 디지털로 완성하세요.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                <Button size="lg" className="flex items-center justify-center space-x-2" onClick={() => window.location.href = '/signup'}>
+                  <span>지금 시작하기</span>
+                  <ArrowRight className="w-5 h-5" />
+                </Button>
+                <Button variant="outline" size="lg" onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}>
+                  더 알아보기
+                </Button>
+              </div>
+
+              <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-1">
+                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                  <span className="text-sm text-gray-600 ml-2">학부모 만족도 98%</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                <img 
+                  src="https://images.unsplash.com/photo-1640622304233-7335e936f11b?q=80&w=800&h=600&fit=crop"
+                  alt="가족이 함께 학습하는 모습" 
+                  className="w-full h-[500px] object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-transparent"></div>
+              </div>
+              
+              {/* Floating stats */}
+              <div className="absolute -bottom-6 -left-6 bg-white rounded-xl p-4 shadow-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">2,500+</p>
+                    <p className="text-sm text-gray-600">완료된 입학 절차</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              왜 Frage EDU를 선택해야 할까요?
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              기존의 복잡한 입학 절차를 하나의 플랫폼에서 간편하게 처리하세요
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-indigo-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">안전한 문서 관리</h3>
+              <p className="text-gray-600">
+                모든 입학 서류를 안전하게 보관하고 언제든지 확인할 수 있습니다. 
+                개인정보는 철저히 보호됩니다.
+              </p>
+            </Card>
+
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Smartphone className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">모바일 최적화</h3>
+              <p className="text-gray-600">
+                언제 어디서나 스마트폰으로 입학 절차를 진행할 수 있습니다. 
+                PC가 없어도 걱정 없어요.
+              </p>
+            </Card>
+
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Clock className="w-8 h-8 text-orange-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">실시간 진행 상황</h3>
+              <p className="text-gray-600">
+                입학 절차의 진행 상황을 실시간으로 확인하고, 
+                완료해야 할 단계를 한눈에 파악하세요.
+              </p>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Process Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              간단한 4단계 입학 절차
+            </h2>
+            <p className="text-xl text-gray-600">
+              복잡했던 입학 절차를 4단계로 간소화했습니다
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-10 h-10 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">1. 동의서</h3>
+              <p className="text-gray-600">학교 규정 및 개인정보처리방침 동의</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ClipboardList className="w-10 h-10 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">2. 신청서</h3>
+              <p className="text-gray-600">학생 정보 및 프로그램 신청</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-10 h-10 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">3. 안내사항</h3>
+              <p className="text-gray-600">학교생활 필수 정보 확인</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-10 h-10 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">4. 체크리스트</h3>
+              <p className="text-gray-600">입학 전 준비물 점검</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-indigo-600">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
+            지금 바로 시작하세요
+          </h2>
+          <p className="text-xl text-indigo-100 mb-8">
+            복잡한 입학 절차, 이제 5분이면 충분합니다
+          </p>
+          
+          <Button 
+            size="lg" 
+            variant="secondary" 
+            className="bg-white text-indigo-600 hover:bg-gray-100 px-8 py-4 text-lg"
+            onClick={() => window.location.href = '/signup'}
+          >
+            무료로 시작하기
+          </Button>
+
+          <div className="mt-8 pt-8 border-t border-indigo-500">
+            <img 
+              src="https://images.unsplash.com/photo-1591218214141-45545921d2d9?q=80&w=600&h=300&fit=crop"
+              alt="졸업식 성공 사례" 
+              className="w-full max-w-md mx-auto rounded-lg shadow-lg opacity-90"
+            />
+            <p className="text-indigo-100 mt-4 text-sm">
+              이미 2,500+ 가정이 Frage EDU와 함께 성공적인 입학을 완료했습니다
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <div className="flex items-center space-x-3 mb-4">
+                <Users className="w-8 h-8 text-indigo-400" />
+                <div>
+                  <h3 className="text-xl font-bold">Frage EDU</h3>
+                  <p className="text-gray-400 text-sm">학부모 입학 포털</p>
+                </div>
+              </div>
+              <p className="text-gray-400">
+                모든 학부모가 쉽고 간편하게 입학 절차를 완료할 수 있도록 도와드립니다.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">서비스</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><a href="#" className="hover:text-white">입학 신청</a></li>
+                <li><a href="#" className="hover:text-white">문서 관리</a></li>
+                <li><a href="#" className="hover:text-white">진행 상황</a></li>
+                <li><a href="#" className="hover:text-white">고객 지원</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">문의</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li>이메일: support@frage.edu</li>
+                <li>전화: 1588-1234</li>
+                <li>운영시간: 평일 9:00-18:00</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+            <p>&copy; 2025 Frage EDU. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
 // Auth Context
 const useAuth = () => {
   const [user, setUser] = useState(null);
