@@ -5232,9 +5232,9 @@ const AdminStudentManagement = () => {
       });
 
       if (searchQuery.trim()) params.append('search', searchQuery.trim());
-      if (branchFilter) params.append('branch_filter', branchFilter);
-      if (statusFilter) params.append('status_filter', statusFilter);
-      if (gradeFilter) params.append('grade_filter', gradeFilter);
+      if (branchFilter && branchFilter !== 'all') params.append('branch_filter', branchFilter);
+      if (statusFilter && statusFilter !== 'all') params.append('status_filter', statusFilter);
+      if (gradeFilter && gradeFilter !== 'all') params.append('grade_filter', gradeFilter);
 
       const response = await axios.get(`${API}/admin/students?${params}`, {
         headers: { Authorization: `Bearer ${adminToken}` }
