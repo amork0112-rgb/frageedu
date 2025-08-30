@@ -1333,6 +1333,192 @@ async def get_orders(current_user: UserResponse = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching orders: {str(e)}")
 
+@api_router.post("/market/init-sample-data")
+async def init_sample_data():
+    """Initialize sample product data"""
+    try:
+        # Check if products already exist
+        existing_products = await db.products.count_documents({})
+        if existing_products > 0:
+            return {"message": f"{existing_products} products already exist"}
+        
+        # Sample uniform products
+        sample_products = [
+            {
+                "name": "프라게 EDU 정규 교복 상의 (남학생)",
+                "description": "고급 원단으로 제작된 프라게 EDU 남학생 정규 교복 상의입니다. 편안한 착용감과 세련된 디자인이 특징입니다.",
+                "price": 45000,
+                "category": "uniform",
+                "subcategory": "shirt",
+                "brand": "Frage EDU",
+                "size_options": ["90", "95", "100", "105", "110", "115"],
+                "color_options": ["Navy", "White"],
+                "images": ["https://via.placeholder.com/400x400/1f2937/ffffff?text=교복+상의"],
+                "stock_quantity": 50,
+                "is_available": True,
+                "is_featured": True,
+                "tags": ["교복", "상의", "남학생", "정규"],
+                "specifications": {
+                    "소재": "폴리에스터 70%, 면 30%",
+                    "관리방법": "찬물 세탁, 건조기 사용 금지",
+                    "제조사": "프라게 EDU"
+                }
+            },
+            {
+                "name": "프라게 EDU 정규 교복 하의 (남학생)",
+                "description": "움직임이 편한 프라게 EDU 남학생 정규 교복 하의입니다. 내구성이 뛰어나고 관리가 쉽습니다.",
+                "price": 42000,
+                "category": "uniform",
+                "subcategory": "pants",
+                "brand": "Frage EDU",
+                "size_options": ["90", "95", "100", "105", "110", "115"],
+                "color_options": ["Navy", "Black"],
+                "images": ["https://via.placeholder.com/400x400/374151/ffffff?text=교복+하의"],
+                "stock_quantity": 45,
+                "is_available": True,
+                "is_featured": True,
+                "tags": ["교복", "하의", "남학생", "정규"],
+                "specifications": {
+                    "소재": "폴리에스터 65%, 면 35%",
+                    "관리방법": "30도 이하 찬물 세탁",
+                    "제조사": "프라게 EDU"
+                }
+            },
+            {
+                "name": "프라게 EDU 정규 교복 상의 (여학생)",
+                "description": "우아하고 단정한 디자인의 프라게 EDU 여학생 정규 교복 상의입니다.",
+                "price": 47000,
+                "category": "uniform",
+                "subcategory": "blouse",
+                "brand": "Frage EDU",
+                "size_options": ["85", "90", "95", "100", "105", "110"],
+                "color_options": ["White", "Light Blue"],
+                "images": ["https://via.placeholder.com/400x400/e5e7eb/374151?text=여학생+상의"],
+                "stock_quantity": 40,
+                "is_available": True,
+                "is_featured": True,
+                "tags": ["교복", "상의", "여학생", "정규"],
+                "specifications": {
+                    "소재": "면 60%, 폴리에스터 40%",
+                    "관리방법": "단독 세탁 권장",
+                    "제조사": "프라게 EDU"
+                }
+            },
+            {
+                "name": "프라게 EDU 체육복 상하 세트",
+                "description": "활동적인 체육 시간을 위한 프라게 EDU 체육복 세트입니다. 흡습 속건 기능이 있습니다.",
+                "price": 38000,
+                "category": "uniform",
+                "subcategory": "sportswear",
+                "brand": "Frage EDU",
+                "size_options": ["S", "M", "L", "XL"],
+                "color_options": ["Navy", "Gray"],
+                "images": ["https://via.placeholder.com/400x400/6366f1/ffffff?text=체육복"],
+                "stock_quantity": 60,
+                "is_available": True,
+                "is_featured": False,
+                "tags": ["체육복", "세트", "운동복"],
+                "specifications": {
+                    "소재": "폴리에스터 100% (흡습속건)",
+                    "관리방법": "찬물 세탁",
+                    "제조사": "프라게 EDU"
+                }
+            },
+            {
+                "name": "프라게 EDU 학교 가방",
+                "description": "튼튼하고 실용적인 프라게 EDU 공식 학교 가방입니다. 다양한 수납공간과 편안한 메는 끈이 특징입니다.",
+                "price": 65000,
+                "category": "accessories",
+                "subcategory": "bag",
+                "brand": "Frage EDU",
+                "size_options": ["Standard"],
+                "color_options": ["Navy", "Black"],
+                "images": ["https://via.placeholder.com/400x400/1f2937/ffffff?text=학교가방"],
+                "stock_quantity": 30,
+                "is_available": True,
+                "is_featured": True,
+                "tags": ["가방", "학교", "백팩"],
+                "specifications": {
+                    "크기": "35 x 45 x 20 cm",
+                    "소재": "나일론 원단 (발수 코팅)",
+                    "용량": "약 30L",
+                    "제조사": "프라게 EDU"
+                }
+            },
+            {
+                "name": "프라게 EDU 실내화",
+                "description": "편안하고 위생적인 프라게 EDU 실내화입니다. 미끄럼 방지 솔창으로 안전합니다.",
+                "price": 25000,
+                "category": "accessories",
+                "subcategory": "shoes",
+                "brand": "Frage EDU",
+                "size_options": ["220", "230", "240", "250", "260", "270"],
+                "color_options": ["White", "Blue"],
+                "images": ["https://via.placeholder.com/400x400/ddd6fe/374151?text=실내화"],
+                "stock_quantity": 80,
+                "is_available": True,
+                "is_featured": False,
+                "tags": ["실내화", "신발", "학교용품"],
+                "specifications": {
+                    "소재": "PVC + 면 안감",
+                    "관리방법": "물세탁 가능",
+                    "제조사": "프라게 EDU"
+                }
+            },
+            {
+                "name": "프라게 EDU 영어 교재 세트",
+                "description": "체계적인 영어 학습을 위한 프라게 EDU 공식 교재 세트입니다. 단계별 학습이 가능합니다.",
+                "price": 32000,
+                "category": "books",
+                "subcategory": "textbook",
+                "brand": "Frage EDU",
+                "size_options": ["Level 1", "Level 2", "Level 3"],
+                "color_options": [],
+                "images": ["https://via.placeholder.com/400x400/059669/ffffff?text=영어교재"],
+                "stock_quantity": 100,
+                "is_available": True,
+                "is_featured": True,
+                "tags": ["교재", "영어", "학습서"],
+                "specifications": {
+                    "구성": "메인북 + 워크북 + CD",
+                    "페이지": "약 200페이지",
+                    "출판사": "프라게 EDU Press"
+                }
+            },
+            {
+                "name": "프라게 EDU 문구 세트",
+                "description": "학습에 필요한 기본 문구를 모은 프라게 EDU 문구 세트입니다.",
+                "price": 18000,
+                "category": "accessories",
+                "subcategory": "stationery",
+                "brand": "Frage EDU",
+                "size_options": ["Basic Set", "Premium Set"],
+                "color_options": ["Blue", "Pink", "Black"],
+                "images": ["https://via.placeholder.com/400x400/f59e0b/ffffff?text=문구세트"],
+                "stock_quantity": 120,
+                "is_available": True,
+                "is_featured": False,
+                "tags": ["문구", "학용품", "세트"],
+                "specifications": {
+                    "구성": "연필, 지우개, 자, 필통, 노트",
+                    "브랜드": "프라게 EDU Official"
+                }
+            }
+        ]
+        
+        # Insert products
+        for product_data in sample_products:
+            product = Product(**product_data)
+            product_dict = product.dict()
+            product_dict['created_at'] = product_dict['created_at'].isoformat()
+            product_dict['updated_at'] = product_dict['updated_at'].isoformat()
+            await db.products.insert_one(product_dict)
+        
+        return {"message": f"Successfully created {len(sample_products)} sample products"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error initializing sample data: {str(e)}")
+
 # Admin Routes
 @api_router.post("/admin/signup")
 async def create_admin(admin_data: AdminCreate):
