@@ -690,6 +690,226 @@ async def upload_image_base64(file: UploadFile = File(...), current_admin: Admin
         "size": len(contents)
     }
 
+# Admin User Management Routes
+@api_router.get("/admin/users")
+async def get_all_users(current_admin: AdminResponse = Depends(get_current_admin), skip: int = 0, limit: int = 50, search: str = None):
+    query = {}
+    if search:
+        query["$or"] = [
+            {"parent_name": {"$regex": search, "$options": "i"}},
+            {"student_name": {"$regex": search, "$options": "i"}},
+            {"email": {"$regex": search, "$options": "i"}},
+            {"phone": {"$regex": search, "$options": "i"}}
+        ]
+    
+    users = await db.users.find(query).skip(skip).limit(limit).to_list(limit)
+    total_count = await db.users.count_documents(query)
+    
+    # Remove password_hash from results
+    for user in users:
+        if 'password_hash' in user:
+            del user['password_hash']
+    
+    return {
+        "users": users,
+        "total": total_count,
+        "skip": skip,
+        "limit": limit
+    }
+
+@api_router.get("/admin/user/{user_id}")
+async def get_user_details(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Remove password_hash
+    if 'password_hash' in user:
+        del user['password_hash']
+    
+    # Get related data
+    admission_data = await db.admission_data.find_one({"household_token": user['household_token']})
+    exam_reservations = await db.exam_reservations.find({"household_token": user['household_token']}).to_list(10)
+    
+    return {
+        "user": user,
+        "admission_data": admission_data,
+        "exam_reservations": exam_reservations
+    }
+
+@api_router.put("/admin/user/{user_id}")
+async def update_user(user_id: str, update_data: dict, current_admin: AdminResponse = Depends(get_current_admin)):
+    # Only allow certain fields to be updated
+    allowed_fields = ['parent_name', 'student_name', 'phone', 'email']
+    filtered_update = {k: v for k, v in update_data.items() if k in allowed_fields}
+    
+    if not filtered_update:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    filtered_update['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": filtered_update}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User updated successfully"}
+
+@api_router.post("/admin/user/{user_id}/reset-password")
+async def reset_user_password(user_id: str, new_password: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    hashed_password = hash_password(new_password)
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"password_hash": hashed_password, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "Password reset successfully"}
+
+@api_router.put("/admin/user/{user_id}/deactivate")
+async def deactivate_user(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"active": False, "deactivated_at": datetime.now(timezone.utc).isoformat(), "deactivated_by": current_admin.id}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": "User deactivated successfully"}
+
+# Admin Admission Management Routes
+@api_router.get("/admin/admissions")
+async def get_admission_overview(current_admin: AdminResponse = Depends(get_current_admin)):
+    # Get admission statistics
+    total_admissions = await db.admission_data.count_documents({})
+    
+    consent_completed = await db.admission_data.count_documents({"consent_status": "completed"})
+    forms_completed = await db.admission_data.count_documents({"forms_status": "completed"})
+    guides_completed = await db.admission_data.count_documents({"guides_status": "completed"})
+    checklist_completed = await db.admission_data.count_documents({"checklist_status": "completed"})
+    
+    # Get recent admissions
+    recent_admissions = await db.admission_data.find({}).sort("updated_at", -1).limit(10).to_list(10)
+    
+    # Add user info to admissions
+    for admission in recent_admissions:
+        user = await db.users.find_one({"household_token": admission["household_token"]})
+        if user:
+            admission["user_info"] = {
+                "parent_name": user.get("parent_name", ""),
+                "student_name": user.get("student_name", ""),
+                "email": user.get("email", "")
+            }
+    
+    return {
+        "statistics": {
+            "total_admissions": total_admissions,
+            "consent_completed": consent_completed,
+            "forms_completed": forms_completed,
+            "guides_completed": guides_completed,
+            "checklist_completed": checklist_completed,
+            "completion_rate": round((consent_completed / total_admissions * 100) if total_admissions > 0 else 0, 1)
+        },
+        "recent_admissions": recent_admissions
+    }
+
+# Admin Exam Management Routes
+@api_router.get("/admin/exam-reservations")
+async def get_exam_reservations(current_admin: AdminResponse = Depends(get_current_admin), status: str = None, brchType: str = None):
+    query = {}
+    if status:
+        query["status"] = status
+    if brchType:
+        query["brchType"] = brchType
+    
+    reservations = await db.exam_reservations.find(query).sort("created_at", -1).to_list(100)
+    
+    # Add user info
+    for reservation in reservations:
+        user = await db.users.find_one({"household_token": reservation["household_token"]})
+        if user:
+            reservation["user_info"] = {
+                "parent_name": user.get("parent_name", ""),
+                "student_name": user.get("student_name", ""),
+                "email": user.get("email", ""),
+                "phone": user.get("phone", "")
+            }
+    
+    return {"reservations": reservations}
+
+@api_router.put("/admin/exam-reservation/{reservation_id}/status")
+async def update_reservation_status(reservation_id: str, status: str, current_admin: AdminResponse = Depends(get_current_admin)):
+    if status not in ["requested", "confirmed", "cancelled", "completed"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    
+    result = await db.exam_reservations.update_one(
+        {"id": reservation_id},
+        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc).isoformat(), "updated_by": current_admin.id}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+    
+    # TODO: Send notification to parent
+    
+    return {"message": f"Reservation status updated to {status}"}
+
+@api_router.get("/admin/dashboard-stats")
+async def get_dashboard_stats(current_admin: AdminResponse = Depends(get_current_admin)):
+    # Users stats
+    total_users = await db.users.count_documents({})
+    users_today = await db.users.count_documents({
+        "created_at": {"$gte": datetime.now(timezone.utc).replace(hour=0, minute=0, second=0).isoformat()}
+    })
+    
+    # News stats
+    total_news = await db.news_articles.count_documents({})
+    published_news = await db.news_articles.count_documents({"published": True})
+    
+    # Exam reservations stats
+    total_reservations = await db.exam_reservations.count_documents({})
+    pending_reservations = await db.exam_reservations.count_documents({"status": "requested"})
+    confirmed_reservations = await db.exam_reservations.count_documents({"status": "confirmed"})
+    
+    # Admission progress stats
+    total_admissions = await db.admission_data.count_documents({})
+    completed_admissions = await db.admission_data.count_documents({
+        "consent_status": "completed",
+        "forms_status": "completed", 
+        "guides_status": "completed",
+        "checklist_status": "completed"
+    })
+    
+    return {
+        "users": {
+            "total": total_users,
+            "today": users_today,
+            "growth": "+12.5%"  # Mock data
+        },
+        "news": {
+            "total": total_news,
+            "published": published_news,
+            "draft": total_news - published_news
+        },
+        "exam_reservations": {
+            "total": total_reservations,
+            "pending": pending_reservations,
+            "confirmed": confirmed_reservations
+        },
+        "admissions": {
+            "total": total_admissions,
+            "completed": completed_admissions,
+            "completion_rate": round((completed_admissions / total_admissions * 100) if total_admissions > 0 else 0, 1)
+        }
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
