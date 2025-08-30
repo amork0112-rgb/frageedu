@@ -732,6 +732,220 @@ async def get_available_exam_slots(brchType: str, campus: str = None):
     
     return {"available_slots": mock_slots}
 
+@api_router.get("/parent/dashboard")
+async def get_parent_dashboard(current_user: UserResponse = Depends(get_current_user)):
+    """Get comprehensive parent dashboard data"""
+    try:
+        # Get parent info
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent info not found")
+        
+        # Get students
+        students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+        
+        # Get admission data
+        admission_data = await db.admission_data.find_one({"household_token": current_user.household_token})
+        
+        # Get exam reservations
+        exam_reservations = await db.exam_reservations.find({"household_token": current_user.household_token}).to_list(10)
+        
+        # Determine enrollment status
+        enrollment_status = "new"
+        if exam_reservations:
+            latest_reservation = max(exam_reservations, key=lambda x: x.get("created_at", ""))
+            if latest_reservation.get("status") == "confirmed":
+                enrollment_status = "test_scheduled"
+            elif latest_reservation.get("status") == "completed":
+                enrollment_status = "test_taken"
+        
+        # Check if enrolled in classes (mock data for now)
+        # In production, this would check actual class enrollments
+        if admission_data and admission_data.get("consent_status") == "completed" and admission_data.get("forms_status") == "completed":
+            enrollment_status = "enrolled"
+        
+        # Prepare test schedules
+        test_schedules = []
+        for reservation in exam_reservations:
+            test_schedule = TestScheduleResponse(
+                id=reservation.get("id", ""),
+                student_name=students[0].get("name", "") if students else "",
+                branch_type=reservation.get("brchType", ""),
+                scheduled_date=reservation.get("slot_start"),
+                scheduled_time=f"{reservation.get('slot_start', '')} - {reservation.get('slot_end', '')}",
+                location=reservation.get("campus", "Frage EDU Campus"),
+                status=reservation.get("status", "requested"),
+                notes=reservation.get("notes", "")
+            )
+            test_schedules.append(test_schedule)
+        
+        # Mock test results (in production, fetch from test_results table)
+        test_results = []
+        if enrollment_status in ["test_taken", "enrolled"]:
+            for student in students:
+                test_result = TestResultResponse(
+                    id=f"result_{student.get('id', '')}",
+                    student_name=student.get("name", ""),
+                    test_date=datetime.now(timezone.utc),
+                    score=85,  # Mock score
+                    level="Intermediate",
+                    status="passed",
+                    feedback="Great potential! Recommended for regular classes.",
+                    recommended_class=f"{parent.get('branch', 'Junior')} English A1"
+                )
+                test_results.append(test_result)
+        
+        # Mock class assignments (in production, fetch from class_enrollments table)
+        class_assignments = []
+        if enrollment_status == "enrolled":
+            for student in students:
+                class_assignment = ClassAssignmentResponse(
+                    id=f"class_{student.get('id', '')}",
+                    student_name=student.get("name", ""),
+                    class_name=f"{parent.get('branch', 'Junior').title()} English A1",
+                    teacher_name="Ms. Sarah Kim",
+                    schedule="Monday/Wednesday 4:00-5:30 PM",
+                    classroom="Room 201",
+                    start_date=datetime.now(timezone.utc),
+                    end_date=None,
+                    status="active",
+                    materials=["Student Workbook", "Online Platform Access", "Reading Materials"]
+                )
+                class_assignments.append(class_assignment)
+        
+        return ParentDashboardResponse(
+            parent_info={
+                "name": current_user.name,
+                "email": current_user.email,
+                "phone": current_user.phone,
+                "branch": parent.get("branch", ""),
+                "household_token": current_user.household_token
+            },
+            students=[{
+                "id": s.get("id", ""),
+                "name": s.get("name", ""),
+                "grade": s.get("grade", ""),
+                "birthdate": s.get("birthdate", "")
+            } for s in students],
+            test_schedules=test_schedules,
+            test_results=test_results,
+            class_assignments=class_assignments,
+            enrollment_status=enrollment_status
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching dashboard data: {str(e)}")
+
+@api_router.get("/parent/test-schedule")
+async def get_test_schedule(current_user: UserResponse = Depends(get_current_user)):
+    """Get test schedule for current user's child"""
+    try:
+        exam_reservations = await db.exam_reservations.find({
+            "household_token": current_user.household_token
+        }).to_list(10)
+        
+        # Get student info
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        students = await db.students.find({"parent_id": parent["id"] if parent else ""}).to_list(10)
+        student_name = students[0].get("name", "") if students else ""
+        
+        schedules = []
+        for reservation in exam_reservations:
+            schedule = {
+                "id": reservation.get("id", ""),
+                "student_name": student_name,
+                "branch_type": reservation.get("brchType", ""),
+                "date": reservation.get("slot_start", ""),
+                "time": f"{reservation.get('slot_start', '')} - {reservation.get('slot_end', '')}",
+                "location": reservation.get("campus", "Frage EDU Campus"),
+                "status": reservation.get("status", "requested"),
+                "notes": reservation.get("notes", "")
+            }
+            schedules.append(schedule)
+        
+        return {"test_schedules": schedules}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching test schedule: {str(e)}")
+
+@api_router.get("/parent/test-results") 
+async def get_test_results(current_user: UserResponse = Depends(get_current_user)):
+    """Get test results for current user's child"""
+    try:
+        # Mock test results for now
+        # In production, this would fetch from a test_results table
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        students = await db.students.find({"parent_id": parent["id"] if parent else ""}).to_list(10)
+        
+        results = []
+        for student in students:
+            # Check if student has taken test (has exam reservation with completed status)
+            exam_reservations = await db.exam_reservations.find({
+                "household_token": current_user.household_token,
+                "status": {"$in": ["completed", "confirmed"]}
+            }).to_list(10)
+            
+            if exam_reservations:
+                result = {
+                    "id": f"result_{student.get('id', '')}",
+                    "student_name": student.get("name", ""),
+                    "test_date": datetime.now(timezone.utc).isoformat(),
+                    "score": 85,  # Mock score
+                    "level": "Intermediate",
+                    "status": "passed",
+                    "feedback": "Excellent performance! Your child shows great potential in English communication.",
+                    "recommended_class": f"{parent.get('branch', 'Junior').title()} English A1"
+                }
+                results.append(result)
+        
+        return {"test_results": results}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching test results: {str(e)}")
+
+@api_router.get("/parent/class-assignments")
+async def get_class_assignments(current_user: UserResponse = Depends(get_current_user)):
+    """Get class assignments for enrolled students"""
+    try:
+        # Mock class assignments for now
+        # In production, this would fetch from class_enrollments table
+        parent = await db.parents.find_one({"user_id": current_user.id})
+        students = await db.students.find({"parent_id": parent["id"] if parent else ""}).to_list(10)
+        
+        # Check if student is enrolled (completed admission process)
+        admission_data = await db.admission_data.find_one({"household_token": current_user.household_token})
+        is_enrolled = (
+            admission_data and 
+            admission_data.get("consent_status") == "completed" and 
+            admission_data.get("forms_status") == "completed"
+        )
+        
+        assignments = []
+        if is_enrolled:
+            for student in students:
+                assignment = {
+                    "id": f"class_{student.get('id', '')}",
+                    "student_name": student.get("name", ""),
+                    "class_name": f"{parent.get('branch', 'Junior').title()} English A1",
+                    "teacher_name": "Ms. Sarah Kim",
+                    "schedule": "Monday/Wednesday 4:00-5:30 PM",
+                    "classroom": "Room 201",
+                    "start_date": datetime.now(timezone.utc).isoformat(),
+                    "status": "active",
+                    "materials": [
+                        "Student Workbook Level A1",
+                        "Online Platform Access",
+                        "Weekly Reading Materials",
+                        "Homework Assignments"
+                    ]
+                }
+                assignments.append(assignment)
+        
+        return {"class_assignments": assignments}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching class assignments: {str(e)}")
+
 # Admin Routes
 @api_router.post("/admin/signup")
 async def create_admin(admin_data: AdminCreate):
