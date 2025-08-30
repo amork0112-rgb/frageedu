@@ -41,7 +41,13 @@ import {
   Play,
   BookmarkCheck,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Plus,
+  Edit3,
+  Trash2,
+  Save,
+  Settings,
+  BarChart3
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
