@@ -601,6 +601,43 @@ async def get_user_reservations(current_user: UserResponse = Depends(get_current
     
     return {"reservations": reservations}
 
+@api_router.get("/admin/audit")
+async def get_audit_logs(
+    current_admin: AdminResponse = Depends(get_current_admin),
+    targetId: str = None,
+    type: str = None,
+    page: int = 1,
+    limit: int = 50
+):
+    query = {}
+    if targetId:
+        query["target_id"] = targetId
+    if type:
+        query["action"] = type
+    
+    skip = (page - 1) * limit
+    
+    audit_logs = await db.audit_logs.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    total_count = await db.audit_logs.count_documents(query)
+    
+    # Add actor names
+    for log in audit_logs:
+        actor = await db.admins.find_one({"id": log["actor_user_id"]})
+        if actor:
+            log["actor_name"] = actor.get("username", "Unknown")
+        else:
+            log["actor_name"] = "System"
+    
+    return {
+        "audit_logs": audit_logs,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total_count,
+            "totalPages": (total_count + limit - 1) // limit
+        }
+    }
+
 @api_router.get("/exam/available-slots")
 async def get_available_exam_slots(brchType: str, campus: str = None):
     # Mock available slots for demo
