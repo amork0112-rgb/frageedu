@@ -3819,6 +3819,9 @@ function App() {
           <Route path="/exam/confirmation" element={<ExamConfirmation />} />
           <Route path="/exam/guide" element={<ExamGuide />} />
           
+          {/* Parent Dashboard */}
+          <Route path="/parent/dashboard" element={<ParentDashboard />} />
+          
           {/* Admission Portal Pages - keeping existing functionality */}
           <Route path="/dashboard" element={
             <TokenAuthWrapper>
