@@ -828,32 +828,140 @@ async def upload_image_base64(file: UploadFile = File(...), current_admin: Admin
         "size": len(contents)
     }
 
-# Admin User Management Routes
-@api_router.get("/admin/users")
-async def get_all_users(current_admin: AdminResponse = Depends(get_current_admin), skip: int = 0, limit: int = 50, search: str = None):
-    query = {}
-    if search:
-        query["$or"] = [
-            {"parent_name": {"$regex": search, "$options": "i"}},
-            {"student_name": {"$regex": search, "$options": "i"}},
-            {"email": {"$regex": search, "$options": "i"}},
-            {"phone": {"$regex": search, "$options": "i"}}
+# Admin Member Management Routes
+@api_router.get("/admin/members")
+async def get_members(
+    current_admin: AdminResponse = Depends(get_current_admin),
+    query: str = None,
+    branch: str = None,
+    status: str = None,
+    page: int = 1,
+    pageSize: int = 50,
+    sort: str = "joinedAt:desc"
+):
+    # Build MongoDB query
+    mongo_query = {}
+    
+    # Text search across multiple fields
+    if query:
+        mongo_query["$or"] = [
+            {"name": {"$regex": query, "$options": "i"}},
+            {"phone": {"$regex": query, "$options": "i"}},
+            {"email": {"$regex": query, "$options": "i"}}
         ]
     
-    users = await db.users.find(query).skip(skip).limit(limit).to_list(limit)
-    total_count = await db.users.count_documents(query)
+    # Filter by status
+    if status:
+        mongo_query["status"] = status
     
-    # Remove password_hash from results
-    for user in users:
-        if 'password_hash' in user:
-            del user['password_hash']
+    # Build parent query for branch filtering
+    parent_query = {}
+    if branch:
+        parent_query["branch"] = branch
     
-    return {
-        "users": users,
-        "total": total_count,
-        "skip": skip,
-        "limit": limit
+    # Parse sort parameter
+    sort_field, sort_order = sort.split(":")
+    sort_direction = -1 if sort_order == "desc" else 1
+    
+    # Map sort field names
+    sort_mapping = {
+        "joinedAt": "created_at",
+        "lastLogin": "last_login_at",
+        "name": "name"
     }
+    sort_field = sort_mapping.get(sort_field, "created_at")
+    
+    # Calculate skip for pagination
+    skip = (page - 1) * pageSize
+    
+    # Get users with parent information
+    pipeline = [
+        {"$match": mongo_query},
+        {
+            "$lookup": {
+                "from": "parents",
+                "localField": "id",
+                "foreignField": "user_id",
+                "as": "parent_info"
+            }
+        },
+        {"$unwind": "$parent_info"},
+        {"$match": {"parent_info." + k: v for k, v in parent_query.items()}},
+        {
+            "$lookup": {
+                "from": "students",
+                "localField": "parent_info.id",
+                "foreignField": "parent_id",
+                "as": "students"
+            }
+        },
+        {"$sort": {sort_field: sort_direction}},
+        {"$skip": skip},
+        {"$limit": pageSize}
+    ]
+    
+    # Execute aggregation - fallback to simple query
+    try:
+        # For now, use simpler approach since aggregation might be complex
+        users = await db.users.find(mongo_query).sort(sort_field, sort_direction).skip(skip).limit(pageSize).to_list(pageSize)
+        
+        members = []
+        for user in users:
+            # Get parent info
+            parent = await db.parents.find_one({"user_id": user["id"]})
+            if not parent:
+                continue
+                
+            # Apply branch filter
+            if branch and parent.get("branch") != branch:
+                continue
+                
+            # Get students
+            students = await db.students.find({"parent_id": parent["id"]}).to_list(10)
+            
+            # Get additional search match for students
+            if query:
+                student_match = any(
+                    query.lower() in student.get("name", "").lower() 
+                    for student in students
+                )
+                user_match = (
+                    query.lower() in user.get("name", "").lower() or
+                    query.lower() in user.get("phone", "").lower() or
+                    query.lower() in user.get("email", "").lower()
+                )
+                if not (user_match or student_match):
+                    continue
+            
+            member = MemberListResponse(
+                id=user["id"],
+                parent_name=user.get("name", ""),
+                phone=user.get("phone", ""),
+                email=user.get("email", ""),
+                students=[{"name": s.get("name", ""), "grade": s.get("grade", "")} for s in students],
+                branch=parent.get("branch", ""),
+                household_token=user.get("household_token", ""),
+                joined_at=user.get("created_at"),
+                last_login=user.get("last_login_at"),
+                status=user.get("status", "active")
+            )
+            members.append(member)
+        
+        # Get total count
+        total_count = await db.users.count_documents(mongo_query)
+        
+        return {
+            "members": [m.dict() for m in members],
+            "pagination": {
+                "page": page,
+                "pageSize": pageSize,
+                "total": total_count,
+                "totalPages": (total_count + pageSize - 1) // pageSize
+            }
+        }
+    except Exception as e:
+        logging.error(f"Error in get_members: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @api_router.get("/admin/user/{user_id}")
 async def get_user_details(user_id: str, current_admin: AdminResponse = Depends(get_current_admin)):
