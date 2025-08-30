@@ -2466,34 +2466,22 @@ const ComprehensiveDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       
       const url = selectedStudentId 
         ? `${API}/parent/dashboard/comprehensive?studentId=${selectedStudentId}`
         : `${API}/parent/dashboard/comprehensive`;
         
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data');
-      }
-
-      const data = await response.json();
-      setDashboardData(data);
+      const response = await axios.get(url);
+      setDashboardData(response.data);
       
       // Set default student if not selected
-      if (!selectedStudentId && data.students.length > 0) {
-        setSelectedStudentId(data.students[0].id);
+      if (!selectedStudentId && response.data.students.length > 0) {
+        setSelectedStudentId(response.data.students[0].id);
       }
       
     } catch (err) {
       console.error('Dashboard error:', err);
-      setError(err.message);
+      setError(err.response?.data?.detail || err.message || 'Failed to fetch dashboard data');
     } finally {
       setLoading(false);
     }
