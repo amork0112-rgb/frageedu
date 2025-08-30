@@ -60,6 +60,8 @@ class UserResponse(BaseModel):
     id: str
     email: str
     phone: str
+    parent_name: str
+    student_name: str
     household_token: str
     created_at: datetime
     email_verified: bool
