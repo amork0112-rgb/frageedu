@@ -632,6 +632,64 @@ async def get_admin_news_articles(current_admin: AdminResponse = Depends(get_cur
         "limit": limit
     }
 
+# File Upload Routes
+@api_router.post("/admin/upload-image")
+async def upload_image(file: UploadFile = File(...), current_admin: AdminResponse = Depends(get_current_admin)):
+    # Check if file is an image
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Check file size (limit to 5MB)
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    
+    # Create uploads directory if it doesn't exist
+    upload_dir = Path("uploads/images")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save file
+    file_path = upload_dir / unique_filename
+    with open(file_path, "wb") as buffer:
+        buffer.write(contents)
+    
+    # Return the file URL
+    file_url = f"/uploads/images/{unique_filename}"
+    
+    return {
+        "message": "Image uploaded successfully",
+        "file_url": file_url,
+        "filename": unique_filename
+    }
+
+@api_router.post("/admin/upload-image-base64")
+async def upload_image_base64(file: UploadFile = File(...), current_admin: AdminResponse = Depends(get_current_admin)):
+    # Check if file is an image
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Read file contents
+    contents = await file.read()
+    
+    # Check file size (limit to 5MB)
+    if len(contents) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size must be less than 5MB")
+    
+    # Convert to base64
+    base64_string = base64.b64encode(contents).decode('utf-8')
+    data_url = f"data:{file.content_type};base64,{base64_string}"
+    
+    return {
+        "message": "Image converted to base64 successfully",
+        "data_url": data_url,
+        "filename": file.filename,
+        "size": len(contents)
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
