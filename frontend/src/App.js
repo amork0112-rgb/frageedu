@@ -2087,8 +2087,10 @@ const Signup = ({ onSignup }) => {
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
-    parent_name: '',
+    name: '',  // Updated from parent_name to name
     student_name: '',
+    student_birthdate: '',  // Added birthdate field
+    branch: '',  // Added branch field
     password: '',
     terms_accepted: false
   });
