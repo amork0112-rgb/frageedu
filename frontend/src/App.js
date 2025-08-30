@@ -1280,10 +1280,89 @@ const TokenAuthWrapper = ({ children }) => {
   return children;
 };
 
+// Login Component
+const Login = ({ onLogin }) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await axios.post(`${API}/login`, formData);
+      onLogin(response.data.token, response.data.user, response.data.household_token);
+    } catch (error) {
+      setError(error.response?.data?.detail || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold text-indigo-900">Frage EDU</CardTitle>
+          <CardDescription>학부모 포털에 로그인하세요</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">이메일</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="parent@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">비밀번호</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="비밀번호를 입력하세요"
+                value={formData.password}
+                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                required
+              />
+            </div>
+            
+            {error && (
+              <div className="text-red-600 text-sm">{error}</div>
+            )}
+            
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "로그인 중..." : "로그인"}
+            </Button>
+            
+            <div className="text-center mt-4">
+              <p className="text-sm text-gray-600">
+                계정이 없으신가요?{' '}
+                <Button variant="link" className="p-0 h-auto" onClick={() => window.location.href = '/signup'}>
+                  가입하기
+                </Button>
+              </p>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 // Main App
 function App() {
   const { user, token, login, logout } = useAuth();
-  const [isSignup, setIsSignup] = useState(false);
 
   const handleSignup = (newToken, userData, household_token) => {
     login(newToken, userData);
@@ -1301,10 +1380,9 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={
-            token ? <Navigate to="/dashboard" /> : <Signup onSignup={handleSignup} />
-          } />
+          <Route path="/" element={<LandingPage />} />
           <Route path="/signup" element={<Signup onSignup={handleSignup} />} />
+          <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route path="/dashboard" element={
             <TokenAuthWrapper>
               <Dashboard user={user} />
