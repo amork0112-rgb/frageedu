@@ -180,6 +180,21 @@ class Billing(BaseModel):
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class StudentProfile(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    postal_code: Optional[str] = None
+    address1: Optional[str] = None  # 기본 주소
+    address2: Optional[str] = None  # 상세 주소
+    use_shuttle: bool = False  # 차량 이용 여부
+    pickup_spot: Optional[str] = None  # 승차 지점
+    dropoff_spot: Optional[str] = None  # 하차 지점
+    start_date: Optional[str] = None  # 등원 시작일 (YYYY-MM-DD)
+    consent_privacy: bool = False  # 개인정보 수집 동의
+    consent_privacy_at: Optional[datetime] = None  # 동의 시간
+    consent_signer: Optional[str] = None  # 동의자 성명
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 class Notice(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     title: str
