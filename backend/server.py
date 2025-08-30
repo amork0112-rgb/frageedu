@@ -349,6 +349,22 @@ def create_admin_jwt_token(admin_id: str, username: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
+async def log_audit(actor_user_id: str, action: str, target_type: str, target_id: str, meta: Optional[Dict] = None, ip: Optional[str] = None):
+    """Log admin actions for audit trail"""
+    audit_log = AuditLog(
+        actor_user_id=actor_user_id,
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        meta=meta or {},
+        ip=ip
+    )
+    
+    audit_dict = audit_log.dict()
+    audit_dict['created_at'] = audit_dict['created_at'].isoformat()
+    
+    await db.audit_logs.insert_one(audit_dict)
+
 # Routes
 @api_router.get("/")
 async def root():
