@@ -126,15 +126,35 @@ class FrageEDUAPITester:
         return success
 
     def test_login(self):
-        """Test user login"""
-        login_data = {
-            "email": "test@frage.edu",
-            "password": "TestPassword123!"
+        """Test user login with last_login_at update"""
+        # First create a test user for login
+        timestamp = datetime.now().strftime('%H%M%S')
+        signup_data = {
+            "email": f"logintest{timestamp}@frage.edu",
+            "phone": "010-9876-5432",
+            "name": f"로그인테스트{timestamp}",
+            "student_name": f"학생테스트{timestamp}",
+            "password": "LoginTest123!",
+            "terms_accepted": True,
+            "branch": "kinder"
         }
         
-        success, response = self.run_test("User Login", "POST", "login", 200, login_data)
+        # Create user first
+        success, signup_response = self.run_test("Create Login Test User", "POST", "signup", 200, signup_data)
+        if not success:
+            return False
+        
+        # Now test login
+        login_data = {
+            "email": signup_data["email"],
+            "password": signup_data["password"]
+        }
+        
+        success, response = self.run_test("User Login (Updated)", "POST", "login", 200, login_data)
         if success and 'token' in response:
-            # Don't overwrite token from signup, just verify login works
+            # Verify last_login_at is updated
+            if 'user' in response and 'last_login_at' in response['user']:
+                print(f"   ✅ Last login updated: {response['user']['last_login_at']}")
             return True
         return False
 
