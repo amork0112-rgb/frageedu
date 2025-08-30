@@ -924,6 +924,22 @@ const ChecklistPage = () => {
   );
 };
 
+// Token Auth Helper - handles both JWT tokens and URL tokens
+const TokenAuthWrapper = ({ children }) => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const tokenFromUrl = urlParams.get('id');
+  
+  // Allow access if user has JWT token OR valid URL token
+  const { user, token } = useAuth();
+  const hasAccess = token || tokenFromUrl;
+  
+  if (!hasAccess) {
+    return <Navigate to="/signup" />;
+  }
+  
+  return children;
+};
+
 // Main App
 function App() {
   const { user, token, login, logout } = useAuth();
@@ -949,11 +965,31 @@ function App() {
             token ? <Navigate to="/dashboard" /> : <Signup onSignup={handleSignup} />
           } />
           <Route path="/signup" element={<Signup onSignup={handleSignup} />} />
-          <Route path="/dashboard" element={<Dashboard user={user} />} />
-          <Route path="/consent" element={<ConsentPage />} />
-          <Route path="/form" element={<FormsPage />} />
-          <Route path="/guide" element={<GuidePage />} />
-          <Route path="/checklist" element={<ChecklistPage />} />
+          <Route path="/dashboard" element={
+            <TokenAuthWrapper>
+              <Dashboard user={user} />
+            </TokenAuthWrapper>
+          } />
+          <Route path="/consent" element={
+            <TokenAuthWrapper>
+              <ConsentPage />
+            </TokenAuthWrapper>
+          } />
+          <Route path="/form" element={
+            <TokenAuthWrapper>
+              <FormsPage />
+            </TokenAuthWrapper>
+          } />
+          <Route path="/guide" element={
+            <TokenAuthWrapper>
+              <GuidePage />
+            </TokenAuthWrapper>
+          } />
+          <Route path="/checklist" element={
+            <TokenAuthWrapper>
+              <ChecklistPage />
+            </TokenAuthWrapper>
+          } />
         </Routes>
       </BrowserRouter>
     </div>
