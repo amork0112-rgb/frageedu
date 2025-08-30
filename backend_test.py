@@ -523,42 +523,69 @@ class FrageEDUAPITester:
         return success
 
 def main():
-    print("🚀 Starting Frage EDU API Tests")
-    print("=" * 50)
+    print("🚀 Starting Frage EDU Member Management API Tests")
+    print("=" * 60)
     
     tester = FrageEDUAPITester()
     
-    # Test sequence
+    # Test sequence - organized by functionality
     tests = [
+        # Basic API Tests
         ("Root Endpoint", tester.test_root_endpoint),
-        ("User Signup", tester.test_signup),
-        ("Duplicate Email Signup", tester.test_signup_duplicate_email),
-        ("Signup No Terms", tester.test_signup_no_terms),
-        ("User Login", tester.test_login),
-        ("Invalid Login", tester.test_login_invalid_credentials),
+        
+        # User Management Tests (New Model Structure)
+        ("User Signup (New Model)", tester.test_signup),
+        ("User Login (Updated)", tester.test_login),
         ("Get Profile", tester.test_profile),
+        
+        # Admin Authentication Tests
+        ("Admin Signup", tester.test_admin_signup),
+        ("Admin Login", tester.test_admin_login),
+        
+        # Member Management Tests
+        ("Get Members List", tester.test_get_members_list),
+        ("Get Member Details", tester.test_get_member_details),
+        ("Reset Member Password", tester.test_reset_member_password),
+        ("Update Member Status", tester.test_update_member_status),
+        ("Bulk Export Members", tester.test_bulk_export_members),
+        ("Bulk Notify Members", tester.test_bulk_notify_members),
+        ("Get Audit Logs", tester.test_get_audit_logs),
+        
+        # Security Tests
+        ("Login Disabled User", tester.test_login_disabled_user),
+        
+        # Admission Flow Tests (Existing)
         ("Get Admission Data", tester.test_get_admission_data),
         ("Update Consent", tester.test_update_consent),
         ("Update Forms", tester.test_update_forms),
         ("Update Guides", tester.test_update_guides),
         ("Update Checklist", tester.test_update_checklist),
-        ("Final Admission Data", tester.test_get_admission_data_after_updates)
+        ("Final Admission Data", tester.test_get_admission_data_after_updates),
+        
+        # Edge Case Tests
+        ("Duplicate Email Signup", tester.test_signup_duplicate_email),
+        ("Signup No Terms", tester.test_signup_no_terms),
+        ("Invalid Login", tester.test_login_invalid_credentials)
     ]
     
     failed_tests = []
     
     for test_name, test_func in tests:
         try:
+            print(f"\n{'='*20} {test_name} {'='*20}")
             if not test_func():
                 failed_tests.append(test_name)
         except Exception as e:
             print(f"❌ {test_name} crashed: {str(e)}")
             failed_tests.append(test_name)
+        
+        # Small delay between tests to avoid overwhelming the server
+        time.sleep(0.5)
     
     # Print results
-    print("\n" + "=" * 50)
-    print("📊 TEST RESULTS")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("📊 MEMBER MANAGEMENT SYSTEM TEST RESULTS")
+    print("=" * 60)
     print(f"Tests passed: {tester.tests_passed}/{tester.tests_run}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
@@ -570,8 +597,24 @@ def main():
         print("\n✅ All tests passed!")
     
     print(f"\n🔑 Test Tokens:")
-    print(f"   JWT Token: {tester.token[:30] if tester.token else 'None'}...")
+    print(f"   User JWT Token: {tester.token[:30] if tester.token else 'None'}...")
+    print(f"   Admin JWT Token: {tester.admin_token[:30] if tester.admin_token else 'None'}...")
     print(f"   Household Token: {tester.household_token or 'None'}")
+    print(f"   Test User ID: {tester.test_user_id or 'None'}")
+    
+    # Summary of key functionality tested
+    print(f"\n📋 Key Features Tested:")
+    print(f"   ✓ Separated User/Parent/Student models")
+    print(f"   ✓ Admin authentication and authorization")
+    print(f"   ✓ Member search, filtering, pagination, sorting")
+    print(f"   ✓ Member profile details")
+    print(f"   ✓ Password reset with audit logging")
+    print(f"   ✓ User status management (enable/disable)")
+    print(f"   ✓ Bulk CSV export")
+    print(f"   ✓ Bulk notifications")
+    print(f"   ✓ Audit log viewing and filtering")
+    print(f"   ✓ Login security (disabled user rejection)")
+    print(f"   ✓ Last login tracking")
     
     return 0 if len(failed_tests) == 0 else 1
 
