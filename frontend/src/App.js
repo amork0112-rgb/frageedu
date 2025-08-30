@@ -2449,7 +2449,523 @@ const AdminLogin = () => {
   );
 };
 
-// Welcome Admission Guide Component
+// New Comprehensive Dashboard Component
+const ComprehensiveDashboard = () => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [selectedStudentId]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const url = selectedStudentId 
+        ? `${API}/parent/dashboard/comprehensive?studentId=${selectedStudentId}`
+        : `${API}/parent/dashboard/comprehensive`;
+        
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+
+      const data = await response.json();
+      setDashboardData(data);
+      
+      // Set default student if not selected
+      if (!selectedStudentId && data.students.length > 0) {
+        setSelectedStudentId(data.students[0].id);
+      }
+      
+    } catch (err) {
+      console.error('Dashboard error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStudentChange = (studentId) => {
+    setSelectedStudentId(studentId);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-300 rounded w-1/4 mb-6"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="h-48 bg-gray-300 rounded-lg"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="w-96">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">오류 발생</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchDashboardData} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              다시 시도
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return <div>No data available</div>;
+  }
+
+  const { parent_info, students, current_student, global_notifications } = dashboardData;
+  const { student_info, admission_progress, exam, timetable, homework, attendance, billing, notices, resources } = current_student;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+      <Header />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Dashboard Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                안녕하세요, {parent_info.name}님 👋
+              </h1>
+              <p className="text-gray-600">자녀의 학습 현황을 한눈에 확인하세요</p>
+            </div>
+            
+            {/* Student Selector */}
+            <div className="flex items-center space-x-4">
+              {students.length > 1 && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-gray-700">자녀 선택:</span>
+                  <select
+                    value={selectedStudentId || ''}
+                    onChange={(e) => handleStudentChange(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {students.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {/* Program Badge */}
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium">
+                {student_info.program_display}
+              </div>
+            </div>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="mt-6 bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">입학 진행도</span>
+              <span className="text-sm text-gray-500">
+                {admission_progress.progress_percentage.toFixed(0)}% 완료
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${admission_progress.progress_percentage}%` }}
+              ></div>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-gray-500">{admission_progress.flow_name}</span>
+              {admission_progress.next_action && (
+                <span className="text-xs text-blue-600 font-medium">
+                  다음: {admission_progress.next_action.replace('Complete: ', '')}
+                </span>
+              )}
+            </div>
+          </div>
+          
+          {/* Global Notifications */}
+          {global_notifications && global_notifications.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {global_notifications.map((notification, index) => (
+                <div
+                  key={index}
+                  className={`flex items-center p-3 rounded-lg ${
+                    notification.priority === 'high' 
+                      ? 'bg-red-50 border border-red-200' 
+                      : 'bg-yellow-50 border border-yellow-200'
+                  }`}
+                >
+                  <AlertCircle className={`w-5 h-5 mr-3 ${
+                    notification.priority === 'high' ? 'text-red-500' : 'text-yellow-500'
+                  }`} />
+                  <span className="text-sm font-medium text-gray-900">
+                    {notification.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Dashboard Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          
+          {/* Admission Progress Card */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">입학 절차</h3>
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <ClipboardList className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="text-2xl font-bold text-blue-600">
+                  {admission_progress.completed_steps.length}/{admission_progress.total_steps}
+                </div>
+                <div className="text-sm text-gray-600">단계 완료</div>
+                
+                {admission_progress.current_step && (
+                  <div className="mt-3 p-2 bg-blue-50 rounded-lg">
+                    <div className="text-xs font-medium text-blue-800">현재 단계</div>
+                    <div className="text-sm text-blue-700">{admission_progress.current_step}</div>
+                  </div>
+                )}
+              </div>
+              
+              {admission_progress.next_action && (
+                <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700" size="sm">
+                  {admission_progress.next_action.replace('Complete: ', '')}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Exam Card - Only show if exam.show_card is true */}
+          {exam.show_card && (
+            <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">시험 / 레벨테스트</h3>
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+                
+                {!exam.has_reservation ? (
+                  <div className="text-center">
+                    <div className="text-sm text-gray-500 mb-3">예약된 시험이 없습니다</div>
+                    <Button className="w-full bg-green-600 hover:bg-green-700" size="sm">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      시험 예약하기
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="text-sm text-gray-600">예약 일정</div>
+                    <div className="font-medium">{exam.reservation_date}</div>
+                    <div className="text-sm text-gray-500">{exam.reservation_time}</div>
+                    
+                    {exam.has_result && (
+                      <div className="mt-3 p-2 bg-green-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-green-800">
+                            점수: {exam.score}점
+                          </span>
+                          <span className="text-xs text-green-600">
+                            {exam.level}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {exam.next_action && (
+                  <div className="mt-3 text-xs text-blue-600">
+                    {exam.next_action}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Timetable Card */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">시간표 / 담임</h3>
+                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-purple-600" />
+                </div>
+              </div>
+              
+              {!timetable.is_enrolled ? (
+                <div className="text-center text-gray-500">
+                  <div className="text-sm mb-2">반 배정 전입니다</div>
+                  <div className="text-xs">상담 후 확정됩니다</div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="font-medium text-purple-600">{timetable.class_name}</div>
+                  <div className="text-sm text-gray-600">{timetable.teacher_name} 선생님</div>
+                  <div className="text-sm text-gray-500">{timetable.schedule}</div>
+                  <div className="text-xs text-gray-400">{timetable.classroom}</div>
+                  
+                  {timetable.level && (
+                    <div className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                      {timetable.level}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Homework Card - Only show if homework.show_card is true */}
+          {homework.show_card && (
+            <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">숙제 / 과제</h3>
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-orange-600" />
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">전체 과제</span>
+                    <span className="font-medium">{homework.total_assignments}개</span>
+                  </div>
+                  
+                  {homework.pending_count > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">미제출</span>
+                      <span className="font-medium text-orange-600">{homework.pending_count}개</span>
+                    </div>
+                  )}
+                  
+                  {homework.overdue_count > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">연체</span>
+                      <span className="font-medium text-red-600">{homework.overdue_count}개</span>
+                    </div>
+                  )}
+                </div>
+                
+                <Button variant="outline" className="w-full mt-4" size="sm">
+                  <FileText className="w-4 h-4 mr-2" />
+                  과제 확인하기
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Attendance Card - Only show if attendance.show_card is true */}
+          {attendance.show_card && (
+            <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">출결 현황</h3>
+                  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-indigo-600" />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="text-2xl font-bold text-indigo-600">
+                    {attendance.attendance_rate.toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-gray-600">출석률</div>
+                  
+                  <div className="grid grid-cols-3 gap-2 text-center mt-3">
+                    <div>
+                      <div className="text-sm font-medium text-green-600">{attendance.present_count}</div>
+                      <div className="text-xs text-gray-500">출석</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-yellow-600">{attendance.late_count}</div>
+                      <div className="text-xs text-gray-500">지각</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-red-600">{attendance.absent_count}</div>
+                      <div className="text-xs text-gray-500">결석</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Billing Card */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">결제 / 청구</h3>
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-green-600" />
+                </div>
+              </div>
+              
+              {billing.pending_payments.length > 0 ? (
+                <div className="space-y-3">
+                  {billing.overdue_count > 0 && (
+                    <div className="p-2 bg-red-50 rounded-lg">
+                      <div className="text-sm font-medium text-red-800">
+                        미납 {billing.overdue_count}건
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    {billing.pending_payments.slice(0, 2).map((payment, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span className="text-gray-600">{payment.type}</span>
+                        <span className="font-medium">₩{payment.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <Button className="w-full bg-green-600 hover:bg-green-700" size="sm">
+                    결제하기
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center text-gray-500">
+                  <div className="text-sm">미납 내역이 없습니다</div>
+                  <div className="text-xs mt-1">모든 결제가 완료되었습니다 ✓</div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Notices Card */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">공지사항</h3>
+                <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center relative">
+                  <Bell className="w-5 h-5 text-yellow-600" />
+                  {notices.unread_count > 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {notices.unread_count}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                {notices.urgent_count > 0 && (
+                  <div className="p-2 bg-red-50 rounded-lg">
+                    <div className="text-sm font-medium text-red-800">
+                      긴급 {notices.urgent_count}건
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">읽지 않은 공지</span>
+                  <span className="font-medium text-yellow-600">{notices.unread_count}개</span>
+                </div>
+                
+                {notices.recent_notices.length > 0 && (
+                  <div className="space-y-1 mt-3">
+                    {notices.recent_notices.slice(0, 2).map((notice, index) => (
+                      <div key={index} className="text-xs text-gray-500 truncate">
+                        • {notice.title}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <Button variant="outline" className="w-full mt-4" size="sm">
+                <Bell className="w-4 h-4 mr-2" />
+                공지사항 보기
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Resources Card */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">자료실</h3>
+                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Archive className="w-5 h-5 text-gray-600" />
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {resources.required_guides_pending > 0 && (
+                  <div className="p-2 bg-orange-50 rounded-lg">
+                    <div className="text-sm font-medium text-orange-800">
+                      필독 가이드 {resources.required_guides_pending}건
+                    </div>
+                  </div>
+                )}
+                
+                {resources.consent_pending && (
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <div className="text-sm font-medium text-blue-800">
+                      동의서 제출 필요
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">가이드</span>
+                  <span className="font-medium">{resources.guides_total}개</span>
+                </div>
+                
+                {resources.guides_unread > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">미확인</span>
+                    <span className="font-medium text-orange-600">{resources.guides_unread}개</span>
+                  </div>
+                )}
+              </div>
+              
+              <Button variant="outline" className="w-full mt-4" size="sm">
+                <Archive className="w-4 h-4 mr-2" />
+                자료실 보기
+              </Button>
+            </CardContent>
+          </Card>
+          
+        </div>
+      </div>
+      
+      <Footer />
+    </div>
+  );
+};
 const WelcomeAdmissionGuide = () => {
   const { user, token } = useAuth();
   const [parentInfo, setParentInfo] = useState(null);
