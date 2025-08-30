@@ -39,13 +39,43 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'frage-edu-secret-key-2025')
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: str
-    phone: str
-    parent_name: str
-    student_name: str
     password_hash: str
+    role: str = "parent"  # admin, staff, parent
+    status: str = "active"  # active, disabled
+    name: str
+    phone: str
     household_token: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    last_login_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     email_verified: bool = False
+
+class Parent(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    name: str
+    phone: str
+    email: str
+    branch: str  # kinder, junior, middle
+    household_token: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Student(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    parent_id: str
+    name: str
+    grade: str
+    birthdate: Optional[str] = None
+    notes: Optional[str] = None
+
+class AuditLog(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    actor_user_id: str
+    action: str  # RESET_PW, DISABLE, ENABLE, EXPORT, IMPERSONATE
+    target_type: str  # User, Parent, Student
+    target_id: str
+    meta: Optional[Dict[str, Any]] = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ip: Optional[str] = None
 
 class UserCreate(BaseModel):
     email: EmailStr
