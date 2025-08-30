@@ -539,6 +539,44 @@ const useAuth = () => {
   return { user, token, login, logout };
 };
 
+// Admin Auth Context
+const useAdminAuth = () => {
+  const [admin, setAdmin] = useState(null);
+  const [adminToken, setAdminToken] = useState(localStorage.getItem('adminToken'));
+
+  useEffect(() => {
+    if (adminToken) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${adminToken}`;
+      fetchAdminProfile();
+    }
+  }, [adminToken]);
+
+  const fetchAdminProfile = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/profile`);
+      setAdmin(response.data);
+    } catch (error) {
+      adminLogout();
+    }
+  };
+
+  const adminLogin = (newToken, adminData) => {
+    localStorage.setItem('adminToken', newToken);
+    setAdminToken(newToken);
+    setAdmin(adminData);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+  };
+
+  const adminLogout = () => {
+    localStorage.removeItem('adminToken');
+    setAdminToken(null);
+    setAdmin(null);
+    delete axios.defaults.headers.common['Authorization'];
+  };
+
+  return { admin, adminToken, adminLogin, adminLogout };
+};
+
 // Exam Reservation Component
 const ExamReservationForm = () => {
   const { user, token } = useAuth();
