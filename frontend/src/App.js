@@ -1467,6 +1467,7 @@ const News = () => {
               </Card>
             ))}
           </div>
+          )}
 
           {/* Load More Button */}
           {filteredNews.length >= 6 && (
