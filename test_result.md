@@ -106,28 +106,34 @@ user_problem_statement: "Debug and fix the /admin/students API that is currently
 
 backend:
   - task: "Debug /admin/students API returning null/empty data"
-    implemented: false
+    implemented: true
     working: false
     file: "backend/server.py"
     stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "main"
         comment: "Current endpoint is /admin/student-management (lines 2616-2726) which has RBAC filtering implemented. Need to investigate if this is the correct endpoint or if a separate /admin/students endpoint needs to be created. The RBAC functions filter_students_by_admin_access, get_allowed_branches, and has_permission are implemented."
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL ISSUE FOUND: The /admin/students endpoint does NOT exist (returns 404). The correct endpoint is /admin/student-management. However, there's a MAJOR BUG in the RBAC branch filtering logic. When admin requests branch_filter='junior' or 'middle', the API still returns kinder students even though admin only has access to kinder branch. The branch filtering is not working correctly - it should return empty results when requesting branches the admin doesn't have access to."
 
   - task: "Verify RBAC initialization and student data"
     implemented: true
-    working: "NA"
+    working: false
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "RBAC system has been initialized using /admin/init-rbac endpoint. Student data should have branch and program_subtype fields. Need to verify actual data exists and RBAC filtering is working correctly."
+      - working: false
+        agent: "testing"
+        comment: "RBAC system cannot be initialized because it requires super_admin role, but all created admins default to kinder_admin role. The RBAC permissions are working (admin has can_view_student, can_view_class, can_view_payment) and allowed_branches shows ['kinder']. However, the branch filtering logic in /admin/student-management has a bug where it ignores the branch_filter parameter when admin doesn't have access to that branch - it should return empty results instead of falling back to showing allowed branch data."
 
 frontend:
 
