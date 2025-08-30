@@ -2613,6 +2613,127 @@ async def init_rbac_system(current_admin: AdminResponse = Depends(get_current_ad
             raise e
         raise HTTPException(status_code=500, detail=f"Error initializing RBAC: {str(e)}")
 
+@api_router.get("/admin/students")
+async def get_students_for_admin(
+    current_admin: AdminResponse = Depends(get_current_admin),
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    branch_filter: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    grade_filter: Optional[str] = None
+):
+    """Get students list with admin role-based filtering (alias for student-management)"""
+    # This is essentially the same as the student-management endpoint
+    # but with the expected naming convention
+    try:
+        # Check permission
+        if not await has_permission(current_admin.id, current_admin.role, "can_view_student"):
+            raise HTTPException(status_code=403, detail="Permission denied: cannot view students")
+        
+        # Get admin's allowed branches
+        access_info = await filter_students_by_admin_access(current_admin.id, current_admin.role)
+        allowed_branches = access_info["allowed_branches"]
+        
+        # Build query
+        query = {}
+        
+        # Apply branch filtering based on admin access
+        if branch_filter:
+            if branch_filter in allowed_branches:
+                query["branch"] = branch_filter
+            else:
+                # Admin requested a branch they don't have access to - return empty results
+                query["branch"] = {"$in": []}  # This will return no results
+        else:
+            query["branch"] = {"$in": allowed_branches}
+        
+        # Apply additional filters
+        if status_filter:
+            query["status"] = status_filter
+        if grade_filter:
+            query["grade"] = grade_filter
+        
+        # Search functionality
+        if search:
+            query["$or"] = [
+                {"name": {"$regex": search, "$options": "i"}},
+                {"id": {"$regex": search, "$options": "i"}}
+            ]
+        
+        # Get students with pagination
+        skip = (page - 1) * limit
+        students = await db.students.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+        total_count = await db.students.count_documents(query)
+        
+        # Enrich student data
+        formatted_students = []
+        for student in students:
+            if '_id' in student:
+                del student['_id']
+            
+            # Get parent info
+            parent = await db.parents.find_one({"id": student["parent_id"]})
+            
+            # Get class info
+            class_assignment = await db.class_placements.find_one({"student_id": student["id"], "status": "active"})
+            
+            # Get progress info
+            progress = await db.student_enrollment_progress.find_one({"student_id": student["id"]})
+            
+            # Calculate enrollment progress
+            if progress:
+                completed_steps = len(progress.get("completed_steps", []))
+                total_steps = 5  # Default flow steps
+                progress_percentage = (completed_steps / total_steps) * 100 if total_steps > 0 else 0
+            else:
+                progress_percentage = 0.0
+            
+            formatted_student = StudentManagement(
+                id=student["id"],
+                name=student["name"],
+                grade=student.get("grade", ""),
+                birthdate=student.get("birthdate"),
+                branch=student.get("branch", ""),
+                program_subtype=student.get("program_subtype", "regular"),
+                status=student.get("status", "active"),
+                parent_name=parent["name"] if parent else "",
+                parent_phone=parent["phone"] if parent else "",
+                parent_email=parent["email"] if parent else "",
+                class_name=class_assignment["class_name"] if class_assignment else None,
+                teacher_name=class_assignment["teacher_name"] if class_assignment else None,
+                attendance_rate=95.0,  # Placeholder
+                payment_status="paid",  # Placeholder
+                last_exam_score=85,  # Placeholder
+                enrollment_progress=progress_percentage,
+                notes=student.get("notes")
+            )
+            formatted_students.append(formatted_student)
+        
+        # Get user permissions for UI
+        permission_codes = []
+        user_permissions = await get_user_permissions(current_admin.id, current_admin.role)
+        for perm in user_permissions:
+            if perm.has_permission:
+                permission_codes.append(perm.code)
+        
+        return StudentManagementResponse(
+            students=formatted_students,
+            pagination={
+                "page": page,
+                "limit": limit,
+                "total": total_count,
+                "total_pages": (total_count + limit - 1) // limit
+            },
+            allowed_branches=allowed_branches,
+            user_permissions=permission_codes
+        )
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching students list: {str(e)}")
+
 @api_router.get("/admin/student-management")
 async def get_student_management_list(
     current_admin: AdminResponse = Depends(get_current_admin),
