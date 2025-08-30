@@ -3423,7 +3423,7 @@ async def update_student_status(
         # Validate specific transitions
         if status_update.status == "enrolled":
             # enrolled requires class assignment
-            class_assignment = await db.class_assignments.find_one({
+            class_assignment = await db.class_placements.find_one({
                 "student_id": student_id,
                 "status": "active"
             })
