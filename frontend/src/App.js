@@ -54,15 +54,12 @@ const Header = () => {
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
               <BookOpen className="w-6 h-6 text-white" />
-            <div className="flex items-center">
-              <a href="/">
-                <img 
-                  src="/logo.png" 
-                  alt="Frage EDU Logo" 
-                  className="h-10 w-auto"
-                />
-              </a>
             </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">Frage EDU</h1>
+              <p className="text-xs text-gray-500">생각하는 영어교육</p>
+            </div>
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
