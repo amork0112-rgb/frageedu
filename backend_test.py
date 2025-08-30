@@ -1050,34 +1050,37 @@ class FrageEDUAPITester:
         return success
 
 def main():
-    print("🚀 Starting Frage EDU Member Management API Tests")
+    print("🚀 Starting Frage EDU Admin Account Creation API Tests")
     print("=" * 60)
     
     tester = FrageEDUAPITester()
     
-    # Test sequence - organized by functionality
+    # Test sequence - PRIORITY: Admin Account Creation Functionality
     tests = [
         # Basic API Tests
         ("Root Endpoint", tester.test_root_endpoint),
+        
+        # PRIORITY TESTING - Admin Account Creation with Roles
+        ("Login with Existing Admin (admin/AdminPass123!)", tester.test_existing_admin_login),
+        ("Setup Default Admin Accounts", tester.test_setup_default_admins),
+        ("Test New Admin Login Credentials", tester.test_new_admin_logins),
+        ("Test Role-Based Access Control", tester.test_role_based_access_control),
+        ("Create Custom Admin with Role", tester.test_create_custom_admin_with_role),
+        ("Verify Admin Role Permissions", tester.test_admin_role_permissions_verification),
+        
+        # Supporting Tests - RBAC and Student Data
+        ("Initialize RBAC System", tester.test_init_rbac_system),
+        ("Create Sample Student Data", tester.test_create_sample_student_data),
+        ("Test /admin/students Endpoint", tester.test_admin_students_endpoint),
+        ("Test Branch Filtering - Unauthorized Access", tester.test_branch_filtering_unauthorized_access),
+        ("Test Branch Filtering - Authorized Access", tester.test_branch_filtering_authorized_access),
+        ("Test Endpoint Consistency", tester.test_students_vs_student_management_consistency),
+        ("Check RBAC Permissions", tester.test_rbac_permissions_check),
         
         # User Management Tests (New Model Structure)
         ("User Signup (New Model)", tester.test_signup),
         ("User Login (Updated)", tester.test_login),
         ("Get Profile", tester.test_profile),
-        
-        # Admin Authentication Tests
-        ("Admin Signup", tester.test_admin_signup),
-        ("Admin Login", tester.test_admin_login),
-        
-        # PRIORITY TESTING - Focus on the 4 implemented fixes
-        ("Admin Signup", tester.test_admin_signup),
-        ("Initialize RBAC System (Fixed)", tester.test_init_rbac_system),
-        ("Create Sample Student Data (NEW)", tester.test_create_sample_student_data),
-        ("Test NEW /admin/students Endpoint", tester.test_admin_students_endpoint),
-        ("Test Branch Filtering - Unauthorized Access", tester.test_branch_filtering_unauthorized_access),
-        ("Test Branch Filtering - Authorized Access", tester.test_branch_filtering_authorized_access),
-        ("Test Endpoint Consistency", tester.test_students_vs_student_management_consistency),
-        ("Check RBAC Permissions", tester.test_rbac_permissions_check),
         
         # Member Management Tests
         ("Get Members List", tester.test_get_members_list),
