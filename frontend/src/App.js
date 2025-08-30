@@ -54,12 +54,15 @@ const Header = () => {
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
               <BookOpen className="w-6 h-6 text-white" />
+            <div className="flex items-center">
+              <a href="/">
+                <img 
+                  src="/logo.png" 
+                  alt="Frage EDU Logo" 
+                  className="h-10 w-auto"
+                />
+              </a>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Frage EDU</h1>
-              <p className="text-xs text-gray-500">생각하는 영어교육</p>
-            </div>
-          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
@@ -145,15 +148,15 @@ const Footer = () => {
             <ul className="space-y-2 text-gray-400">
               <li className="flex items-center space-x-2">
                 <MapPin className="w-4 h-4" />
-                <span>서울시 강남구 테헤란로 123</span>
+                <span>대구 수성구 범어천로 167 3-4층</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Phone className="w-4 h-4" />
-                <span>02-1234-5678</span>
+                <span>053-754-0577</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Mail className="w-4 h-4" />
-                <span>info@frage.edu</span>
+                <span>frage0577@gmail.com</span>
               </li>
             </ul>
           </div>
@@ -193,12 +196,12 @@ const Homepage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="text-center lg:text-left">
-              <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+              <h1 className="font-heading text-4xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
                 생각하는 힘을 키우는<br />
                 <span className="text-purple-600">영어교육, 프라게</span>
               </h1>
               <p className="text-lg lg:text-xl text-gray-600 mb-8 leading-relaxed">
-                Frage EDU — Growing the Power to Think through English Learning.<br />
+                Growing the Power to Think through English Learning.<br />
                 비판적 사고력과 창의력을 기르는 프로젝트 기반 영어교육을 제공합니다.
               </p>
               

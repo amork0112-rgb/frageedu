@@ -7,6 +7,11 @@ module.exports = {
   ],
   theme: {
   	extend: {
+		fontFamily: {
+        sans: ['Pretendard', 'Noto Sans KR', 'ui-sans-serif', 'system-ui'],
+        heading: ['Pretendard', 'Noto Sans KR', 'sans-serif'],
+        eng: ['Inter', 'Arial', 'sans-serif'],
+      	},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
