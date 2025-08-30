@@ -60,6 +60,8 @@ const Signup = ({ onSignup }) => {
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
+    parent_name: '',
+    student_name: '',
     password: '',
     terms_accepted: false
   });
