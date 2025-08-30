@@ -480,11 +480,15 @@ async def update_consent(token: str, consent_data: ConsentUpdate):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Get parent info for signature
+    parent = await db.parents.find_one({"user_id": user['id']})
+    student = await db.students.find_one({"parent_id": parent['id'] if parent else ""})
+    
     # Add signature information
     consent_with_signature = consent_data.dict()
     consent_with_signature.update({
-        "parent_signature": user['parent_name'],
-        "student_name": user['student_name'],
+        "parent_signature": user['name'],
+        "student_name": student['name'] if student else "",
         "signed_at": datetime.now(timezone.utc).isoformat()
     })
     
