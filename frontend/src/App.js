@@ -371,6 +371,128 @@ const Dashboard = ({ user }) => {
   );
 };
 
+// Consent Details Data
+const consentDetails = {
+  regulation: {
+    title: "학교 규정 동의",
+    content: `
+**학교 운영 규정 및 교육 방침**
+
+1. **출결 관리**
+   - 등교 시간: 오전 8:30까지
+   - 지각 3회는 결석 1회로 처리
+   - 결석 시 반드시 전날까지 연락
+
+2. **학습 지도**
+   - 숙제는 매일 확인하여 제출
+   - 학부모 상담은 월 1회 실시
+   - 성적 평가는 다면평가로 진행
+
+3. **생활 지도**
+   - 교내에서는 실내화 착용 의무
+   - 전자기기 반입 금지
+   - 폭력이나 괴롭힘 발생 시 즉시 조치
+
+4. **안전 관리**
+   - 학교 안전 규칙 준수
+   - 위험 행동 금지
+   - 안전사고 발생 시 즉시 보호자 연락
+    `
+  },
+  privacy: {
+    title: "개인정보처리방침 동의",
+    content: `
+**개인정보 수집 및 이용에 관한 동의**
+
+1. **수집하는 개인정보**
+   - 학생: 성명, 생년월일, 주소, 연락처
+   - 학부모: 성명, 연락처, 이메일, 직업
+   - 학습 관련: 성적, 출결, 특기사항
+
+2. **개인정보 이용 목적**
+   - 학사 운영 및 교육 서비스 제공
+   - 학부모 연락 및 상담
+   - 학교 행사 및 프로그램 안내
+   - 응급상황 발생 시 연락
+
+3. **개인정보 보유 기간**
+   - 재학 기간 + 졸업 후 5년
+   - 법령에 따른 보존 의무 기간 준수
+
+4. **개인정보 제3자 제공**
+   - 교육청, 보건소 등 법령에 따른 제공
+   - 학부모 동의 시에만 외부 기관 제공
+
+5. **개인정보 처리 위탁**
+   - 급식업체, 통학버스 운영업체
+   - 위탁계약 시 안전성 확보 조치
+    `
+  },
+  photo: {
+    title: "사진 촬영 및 활용 동의",
+    content: `
+**학교 활동 사진 촬영 및 사용에 관한 동의**
+
+1. **촬영 범위**
+   - 교실 수업 활동
+   - 학교 행사 및 체험학습
+   - 방과후 프로그램 활동
+   - 급식 및 휴식 시간
+
+2. **사용 목적**
+   - 학교 홈페이지 및 소식지 게재
+   - 학교 홍보 자료 제작
+   - 교육활동 기록 및 보관
+   - SNS 및 언론 보도 자료
+
+3. **사용 기간**
+   - 촬영일로부터 3년간
+   - 졸업 앨범 등 기념품: 영구 보관
+
+4. **개인정보 보호**
+   - 학생 성명 등 개인식별정보 제외
+   - 부적절한 용도 사용 금지
+   - 보호자 요청 시 삭제 조치
+
+5. **동의 철회**
+   - 언제든지 동의 철회 가능
+   - 철회 시 해당 사진 사용 중단
+    `
+  },
+  medical: {
+    title: "응급 의료 동의",
+    content: `
+**응급상황 시 의료 처치에 관한 동의**
+
+1. **응급상황 범위**
+   - 외상: 타박상, 찰과상, 골절 등
+   - 질병: 발열, 복통, 두통 등
+   - 알레르기 반응
+   - 기타 응급을 요하는 상황
+
+2. **응급처치 절차**
+   - 1차: 학교 보건교사 응급처치
+   - 2차: 인근 병원 이송 및 치료
+   - 3차: 보호자 연락 및 상황 설명
+
+3. **의료기관 이용**
+   - 인근 지정 병원 우선 이용
+   - 응급실 이용 시 즉시 보호자 연락
+   - 치료비는 보호자 부담
+
+4. **의료진과의 소통**
+   - 학생 상태 및 알레르기 정보 전달
+   - 치료 과정 및 결과 보고
+   - 후속 조치 계획 수립
+
+5. **보험 및 책임**
+   - 학교안전공제회 보험 적용
+   - 학교 과실 시 손해배상
+   - 불가항력 사고는 면책
+    `
+  }
+};
+
 // Consent Page
 const ConsentPage = () => {
   const [formData, setFormData] = useState({
@@ -415,6 +537,56 @@ const ConsentPage = () => {
     );
   }
 
+  const ConsentItem = ({ id, title, description, checked, onChange, detailKey }) => (
+    <div className="flex items-start space-x-3 p-4 rounded-lg border hover:bg-gray-50">
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        className="mt-1"
+      />
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <Label htmlFor={id} className="font-medium text-base cursor-pointer">{title}</Label>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800">
+                <Eye className="w-4 h-4 mr-1" />
+                자세히 보기
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-xl">{consentDetails[detailKey].title}</DialogTitle>
+                <DialogDescription className="text-sm text-gray-600">
+                  상세 내용을 확인하신 후 동의해주세요.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4">
+                <div className="prose prose-sm max-w-none">
+                  {consentDetails[detailKey].content.split('\n').map((line, index) => {
+                    if (line.trim() === '') return <br key={index} />;
+                    if (line.startsWith('**') && line.endsWith('**')) {
+                      return <h3 key={index} className="font-bold text-gray-900 mt-4 mb-2">{line.slice(2, -2)}</h3>;
+                    }
+                    if (line.trim().startsWith('-')) {
+                      return <li key={index} className="ml-4 mb-1">{line.trim().slice(1).trim()}</li>;
+                    }
+                    if (line.match(/^\d+\./)) {
+                      return <h4 key={index} className="font-semibold text-gray-800 mt-3 mb-1">{line}</h4>;
+                    }
+                    return <p key={index} className="mb-2 text-gray-700">{line}</p>;
+                  })}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <p className="text-sm text-gray-600 mt-1">{description}</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
       <div className="max-w-2xl mx-auto px-4">
@@ -422,76 +594,48 @@ const ConsentPage = () => {
           <CardHeader>
             <CardTitle className="text-2xl">동의서</CardTitle>
             <CardDescription>
-              입학을 위한 필수 동의사항들을 검토하고 동의해주세요.
+              각 항목의 상세 내용을 확인하신 후 동의해주세요. 자세히 보기 버튼을 클릭하면 상세 내용을 확인할 수 있습니다.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="regulation"
-                    checked={formData.regulation_agreed}
-                    onCheckedChange={(checked) => setFormData({...formData, regulation_agreed: checked})}
-                  />
-                  <div>
-                    <Label htmlFor="regulation" className="font-medium">학교 규정 동의</Label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      학교 운영 규정 및 교육 방침에 동의합니다.
-                    </p>
-                  </div>
-                </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <ConsentItem
+                id="regulation"
+                title="학교 규정 동의"
+                description="학교 운영 규정 및 교육 방침에 동의합니다."
+                checked={formData.regulation_agreed}
+                onChange={(checked) => setFormData({...formData, regulation_agreed: checked})}
+                detailKey="regulation"
+              />
 
-                <Separator />
+              <ConsentItem
+                id="privacy"
+                title="개인정보처리방침 동의"
+                description="개인정보 수집, 이용, 제공에 대한 방침에 동의합니다."
+                checked={formData.privacy_agreed}
+                onChange={(checked) => setFormData({...formData, privacy_agreed: checked})}
+                detailKey="privacy"
+              />
 
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="privacy"
-                    checked={formData.privacy_agreed}
-                    onCheckedChange={(checked) => setFormData({...formData, privacy_agreed: checked})}
-                  />
-                  <div>
-                    <Label htmlFor="privacy" className="font-medium">개인정보처리방침 동의</Label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      개인정보 수집, 이용, 제공에 대한 방침에 동의합니다.
-                    </p>
-                  </div>
-                </div>
+              <ConsentItem
+                id="photo"
+                title="사진 촬영 및 활용 동의"
+                description="학교 활동 사진 촬영 및 홍보 목적 사용에 동의합니다."
+                checked={formData.photo_consent}
+                onChange={(checked) => setFormData({...formData, photo_consent: checked})}
+                detailKey="photo"
+              />
 
-                <Separator />
+              <ConsentItem
+                id="medical"
+                title="응급 의료 동의"
+                description="응급상황 시 필요한 의료 처치에 대해 동의합니다."
+                checked={formData.medical_consent}
+                onChange={(checked) => setFormData({...formData, medical_consent: checked})}
+                detailKey="medical"
+              />
 
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="photo"
-                    checked={formData.photo_consent}
-                    onCheckedChange={(checked) => setFormData({...formData, photo_consent: checked})}
-                  />
-                  <div>
-                    <Label htmlFor="photo" className="font-medium">사진 촬영 및 활용 동의</Label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      학교 활동 사진 촬영 및 홍보 목적 사용에 동의합니다.
-                    </p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="medical"
-                    checked={formData.medical_consent}
-                    onCheckedChange={(checked) => setFormData({...formData, medical_consent: checked})}
-                  />
-                  <div>
-                    <Label htmlFor="medical" className="font-medium">응급 의료 동의</Label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      응급상황 시 필요한 의료 처치에 대해 동의합니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex space-x-3">
+              <div className="flex space-x-3 pt-6">
                 <Button 
                   type="button" 
                   variant="outline" 
