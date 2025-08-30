@@ -2496,6 +2496,316 @@ async def acknowledge_notices(
             raise e
         raise HTTPException(status_code=500, detail=f"Error acknowledging notices: {str(e)}")
 
+@api_router.post("/admin/students/{student_id}/update-status")
+async def update_student_enrollment_status(
+    student_id: str,
+    status_update: Dict[str, Any],
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Admin endpoint to update student enrollment status and trigger flow events"""
+    try:
+        # Verify student exists
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        new_enrollment_status = status_update.get("enrollment_status")
+        new_flow_step = status_update.get("flow_step") 
+        notes = status_update.get("notes", "")
+        
+        # Update progress if enrollment status provided
+        if new_enrollment_status:
+            progress = await db.student_enrollment_progress.find_one({"student_id": student_id})
+            if progress:
+                await db.student_enrollment_progress.update_one(
+                    {"student_id": student_id},
+                    {
+                        "$set": {
+                            "enrollment_status": new_enrollment_status,
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }
+                    }
+                )
+        
+        # Trigger flow event if step provided  
+        if new_flow_step:
+            event_type = f"{new_flow_step}.completed"
+            result = await trigger_flow_event(
+                student_id,
+                event_type,
+                new_flow_step,
+                {
+                    "updated_by": f"admin:{current_admin.id}",
+                    "notes": notes,
+                    "manual_update": True
+                },
+                f"admin:{current_admin.id}"
+            )
+            
+            if "error" in result:
+                raise HTTPException(status_code=400, detail=result["error"])
+        
+        # Create class assignment if enrolling
+        if new_enrollment_status == "enrolled" and status_update.get("class_assignment"):
+            class_data = status_update["class_assignment"]
+            
+            # Check if assignment already exists
+            existing = await db.class_placements.find_one({
+                "student_id": student_id,
+                "status": "active"
+            })
+            
+            if not existing:
+                assignment = ClassAssignment(
+                    student_id=student_id,
+                    class_id=class_data.get("class_id", f"class_{student_id}"),
+                    class_name=class_data["class_name"],
+                    teacher_name=class_data["teacher_name"],
+                    teacher_id=class_data.get("teacher_id"),
+                    weekday=class_data["weekday"],
+                    time_start=class_data["time_start"],
+                    time_end=class_data["time_end"], 
+                    classroom=class_data["classroom"],
+                    level=class_data.get("level"),
+                    start_date=datetime.fromisoformat(class_data["start_date"]),
+                    assigned_by=current_admin.id
+                )
+                
+                assignment_dict = assignment.dict()
+                assignment_dict['created_at'] = assignment_dict['created_at'].isoformat()
+                assignment_dict['start_date'] = assignment_dict['start_date'].isoformat()
+                
+                await db.class_placements.insert_one(assignment_dict)
+                
+                # Trigger placement event
+                await trigger_flow_event(
+                    student_id,
+                    "class.assigned",
+                    "placement",
+                    {
+                        "class_name": class_data["class_name"],
+                        "teacher": class_data["teacher_name"],
+                        "assigned_by": f"admin:{current_admin.id}"
+                    },
+                    f"admin:{current_admin.id}"
+                )
+        
+        # Log admin action
+        await log_audit(
+            current_admin.id,
+            f"UPDATE_STATUS:{new_enrollment_status or new_flow_step}",
+            "Student", 
+            student_id,
+            status_update
+        )
+        
+        # Send notification (if configured)
+        await send_alimtalk_notification(
+            student_id,
+            "status_update",
+            {
+                "new_status": new_enrollment_status,
+                "updated_by": current_admin.username,
+                "notes": notes
+            }
+        )
+        
+        return {
+            "message": "Student status updated successfully",
+            "student_id": student_id,
+            "new_status": new_enrollment_status,
+            "flow_step": new_flow_step
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error updating student status: {str(e)}")
+
+@api_router.post("/admin/students/{student_id}/assign-class")
+async def assign_student_to_class(
+    student_id: str,
+    class_assignment: Dict[str, Any],
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Admin endpoint to assign student to class"""
+    try:
+        # Verify student exists
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Check if assignment already exists
+        existing = await db.class_placements.find_one({
+            "student_id": student_id,
+            "status": "active"
+        })
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Student already assigned to active class")
+        
+        # Create assignment
+        assignment = ClassAssignment(
+            student_id=student_id,
+            class_id=class_assignment.get("class_id", f"class_{student_id}"),
+            class_name=class_assignment["class_name"],
+            teacher_name=class_assignment["teacher_name"],
+            teacher_id=class_assignment.get("teacher_id"),
+            weekday=class_assignment["weekday"],
+            time_start=class_assignment["time_start"],
+            time_end=class_assignment["time_end"],
+            classroom=class_assignment["classroom"],
+            level=class_assignment.get("level"),
+            start_date=datetime.fromisoformat(class_assignment["start_date"]),
+            assigned_by=current_admin.id
+        )
+        
+        assignment_dict = assignment.dict()
+        assignment_dict['created_at'] = assignment_dict['created_at'].isoformat()
+        assignment_dict['start_date'] = assignment_dict['start_date'].isoformat()
+        
+        await db.class_placements.insert_one(assignment_dict)
+        
+        # Update enrollment status to enrolled
+        await db.student_enrollment_progress.update_one(
+            {"student_id": student_id},
+            {
+                "$set": {
+                    "enrollment_status": "enrolled",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Trigger placement event
+        await trigger_flow_event(
+            student_id,
+            "class.assigned", 
+            "placement",
+            {
+                "class_name": class_assignment["class_name"],
+                "teacher": class_assignment["teacher_name"],
+                "classroom": class_assignment["classroom"],
+                "schedule": f"{class_assignment['weekday']} {class_assignment['time_start']}-{class_assignment['time_end']}",
+                "assigned_by": f"admin:{current_admin.id}"
+            },
+            f"admin:{current_admin.id}"
+        )
+        
+        # Log admin action
+        await log_audit(
+            current_admin.id,
+            "ASSIGN_CLASS",
+            "Student",
+            student_id, 
+            class_assignment
+        )
+        
+        # Send notification
+        await send_alimtalk_notification(
+            student_id,
+            "class_assigned",
+            {
+                "class_name": class_assignment["class_name"],
+                "teacher": class_assignment["teacher_name"],
+                "start_date": class_assignment["start_date"]
+            }
+        )
+        
+        return {
+            "message": "Class assignment successful",
+            "assignment_id": assignment.id,
+            "class_name": class_assignment["class_name"]
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error assigning class: {str(e)}")
+
+@api_router.get("/admin/students/{student_id}/dashboard-preview")
+async def get_student_dashboard_preview(
+    student_id: str,
+    current_admin: AdminResponse = Depends(get_current_admin)
+):
+    """Admin endpoint to preview how student dashboard looks"""
+    try:
+        # Get student info
+        student = await db.students.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Get parent info
+        parent = await db.parents.find_one({"id": student["parent_id"]})
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent not found")
+        
+        # Clean student data
+        if '_id' in student:
+            del student['_id']
+        
+        # Build student info
+        program_display = await get_program_display_name(
+            student.get("branch", ""), 
+            student.get("program_subtype", "regular")
+        )
+        
+        student_info = StudentInfo(
+            id=student["id"],
+            name=student["name"],
+            grade=student.get("grade", ""),
+            birthdate=student.get("birthdate"),
+            branch=student.get("branch", ""),
+            program_subtype=student.get("program_subtype", "regular"),
+            requires_exam=student.get("requires_exam", True),
+            program_display=program_display
+        )
+        
+        # Build all dashboard cards (same as parent view)
+        admission_progress = await build_admission_progress_card(student["id"])
+        exam_card = await build_exam_card(student["id"], student)
+        timetable_card = await build_timetable_card(student["id"])
+        homework_card = await build_homework_card(student["id"])
+        attendance_card = await build_attendance_card(student["id"]) 
+        billing_card = await build_billing_card(student["id"], parent["household_token"])
+        notices_card = await build_notices_card(student["id"], student)
+        resources_card = await build_resources_card(student["id"], parent["household_token"], student)
+        
+        # Build dashboard preview
+        dashboard_preview = DashboardCardsResponse(
+            student_info=student_info,
+            admission_progress=admission_progress,
+            exam=exam_card,
+            timetable=timetable_card,
+            homework=homework_card,
+            attendance=attendance_card,
+            billing=billing_card,
+            notices=notices_card,
+            resources=resources_card
+        )
+        
+        return {
+            "student_info": student_info,
+            "parent_info": {
+                "name": parent.get("name", ""),
+                "email": parent.get("email", ""),
+                "phone": parent.get("phone", ""),
+                "household_token": parent["household_token"]
+            },
+            "dashboard": dashboard_preview,
+            "admin_actions": {
+                "can_update_status": True,
+                "can_assign_class": not timetable_card.is_enrolled,
+                "can_add_homework": timetable_card.is_enrolled,
+                "can_record_attendance": timetable_card.is_enrolled
+            }
+        }
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"Error fetching dashboard preview: {str(e)}")
+
 async def send_alimtalk_notification(student_id: str, template_type: str, data: Dict = None):
     """Send AlimTalk notification (placeholder for integration)"""
     # TODO: Integrate with Solapi AlimTalk API
