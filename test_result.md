@@ -313,10 +313,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Setup default admin accounts via /admin/setup-default-admins endpoint"
-    - "Test admin creation with roles via /admin/create-with-role endpoint"
-    - "Verify login credentials for each new admin account"
-    - "Test role-based access and RBAC filtering for each admin"
+    - "GET /api/parent/enroll-form - 입학 등록 폼 데이터 조회"
+    - "POST /api/parent/enroll-form - 입학 등록 폼 제출"
+    - "POST /api/parent/students/{student_id}/photo - 학생 사진 업로드"
+    - "GET /api/parent/address/search - 한국 주소 검색"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -332,3 +332,5 @@ agent_communication:
     message: "ADMIN ACCOUNT CREATION TESTING COMPLETED SUCCESSFULLY: ✅ /admin/setup-default-admins endpoint creates 4 default admin accounts (super_admin, kinder_admin, junior_admin, middle_admin) with correct credentials. ✅ All new admin accounts can login successfully with designated passwords (Super123!, Kinder123!, Junior123!, Middle123!). ✅ /admin/create-with-role endpoint allows super_admin to create custom admin accounts with specific roles. ✅ RBAC filtering verified - each admin role sees only authorized branches and students. ✅ Branch filtering works correctly - unauthorized branch requests return 0 students. ✅ Audit logging implemented for all admin creation actions. All priority admin account creation functionality is working correctly."
   - agent: "testing"
     message: "STUDENT MANAGEMENT INTERFACE TESTING COMPLETED SUCCESSFULLY: ✅ Used super_admin credentials (super_admin/Super123!) as requested. ✅ Sample student data verified - 8 students exist across different branches (kinder: 1, junior: 7, middle: 0). ✅ /admin/create-sample-data endpoint working correctly - reports existing data appropriately. ✅ /admin/students endpoint returns proper data with correct RBAC filtering. ✅ RBAC system initialization successful. ✅ All 4 admin role types (super_admin, kinder_admin, junior_admin, middle_admin) have correct branch access and permissions. ✅ Branch filtering works perfectly - unauthorized branches return empty results. ✅ Both /admin/students and /admin/student-management endpoints return consistent data. ✅ Student Management interface has proper data to display and all functionality is working as expected. 100% success rate on all Student Management interface tests."
+  - agent: "testing"
+    message: "PARENT ENROLLMENT FORM SYSTEM TESTING COMPLETED SUCCESSFULLY: ✅ GET /api/parent/enroll-form endpoint working - returns student info (id, name, birthdate, age, photo_url, branch, program_subtype), parent info (name, phone), and existing profile data with proper authentication and student ownership verification. ✅ POST /api/parent/enroll-form endpoint working - validates required fields (address1, start_date, consent_privacy), shuttle validation (pickup/dropoff spots when use_shuttle=true), creates/updates StudentProfile with consent timestamps. ✅ POST /api/parent/students/{student_id}/photo endpoint working - validates file requirements (image type, JPG/PNG format, 5MB limit), saves to uploads/students directory, updates Student model with photo_url. ✅ GET /api/parent/address/search endpoint working - returns mock Korean address data with proper structure (address_name, road_address, postal_code, building_name). ✅ Parent authentication system working - JWT authentication, student ownership verification, proper error handling. ✅ Form validation working - comprehensive validation with Korean error messages. All 4 priority parent enrollment form APIs are working correctly with proper authentication, validation, and error handling."
