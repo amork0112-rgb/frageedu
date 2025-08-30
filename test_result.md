@@ -201,7 +201,7 @@ backend:
         agent: "testing"
         comment: "✅ BRANCH FILTERING BUG FIXED: Tested kinder_admin requesting junior/middle branches - correctly returns 0 students (empty results) instead of fallback data. Admin with kinder access only sees kinder students. Branch filtering logic works correctly: unauthorized branches return empty, authorized branches return filtered results."
 
-  - task: "Fix RBAC initialization for regular admin roles"
+  - task: "Create proper admin accounts for each role type"
     implemented: true
     working: true
     file: "backend/server.py"
@@ -211,10 +211,25 @@ backend:
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Modified RBAC initialization to accept both 'admin' and 'super_admin' roles instead of requiring super_admin only. This allows regular admins to initialize the RBAC system."
+        comment: "Added /admin/setup-default-admins endpoint to create default admin accounts for each role (super_admin, kinder_admin, junior_admin, middle_admin) and /admin/create-with-role endpoint for custom admin creation with specific roles."
       - working: true
         agent: "testing"
-        comment: "✅ RBAC INITIALIZATION FIXED: Regular admin roles (kinder_admin, junior_admin, middle_admin) can now successfully initialize RBAC system. Fixed role validation in both /admin/init-rbac and /admin/create-sample-data endpoints. RBAC system initializes successfully with message 'RBAC system initialized successfully'."
+        comment: "✅ PASSED - Admin account creation functionality working perfectly. Default accounts created: super_admin/Super123!, kinder_admin/Kinder123!, junior_admin/Junior123!, middle_admin/Middle123!. All accounts can login successfully and have proper RBAC filtering."
+
+  - task: "Test role-based access control for each admin type"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to verify each admin role type has correct branch access and permissions according to RBAC rules."
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - RBAC verification completed successfully. super_admin sees all branches with 8 students, kinder_admin restricted to kinder (1 student), junior_admin has access to junior/kinder_single/middle (7 students), middle_admin restricted to middle (0 students). All filtering working correctly."
 
 frontend:
 
