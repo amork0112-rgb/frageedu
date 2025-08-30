@@ -628,8 +628,11 @@ async def get_audit_logs(
     audit_logs = await db.audit_logs.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     total_count = await db.audit_logs.count_documents(query)
     
-    # Add actor names
+    # Clean audit logs and add actor names
     for log in audit_logs:
+        if '_id' in log:
+            del log['_id']
+        
         actor = await db.admins.find_one({"id": log["actor_user_id"]})
         if actor:
             log["actor_name"] = actor.get("username", "Unknown")
