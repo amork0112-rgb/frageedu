@@ -5173,6 +5173,599 @@ const AdminMemberManagement = () => {
   );
 };
 
+// Admin Student Management Component
+const AdminStudentManagement = () => {
+  const [adminToken] = useState(localStorage.getItem('adminToken'));
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showSidePanel, setShowSidePanel] = useState(false);
+  const [allowedBranches, setAllowedBranches] = useState([]);
+  const [userPermissions, setUserPermissions] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // 과정별 옵션 정의
+  const branchOptions = [
+    { value: 'kinder', label: '프라게 킨더' },
+    { value: 'kinder_single', label: '유치 단과' },
+    { value: 'junior', label: '주니어' },
+    { value: 'middle', label: '프라디스 중등' }
+  ];
+
+  const statusOptions = [
+    { value: 'active', label: '재원' },
+    { value: 'suspended', label: '휴학' },
+    { value: 'graduated', label: '퇴원' },
+    { value: 'waiting', label: '대기' }
+  ];
+
+  const gradeOptions = [
+    { value: 'K5', label: '유치 5세' },
+    { value: 'K6', label: '유치 6세' },
+    { value: 'G1', label: '초1' },
+    { value: 'G2', label: '초2' },
+    { value: 'G3', label: '초3' },
+    { value: 'G4', label: '초4' },
+    { value: 'G5', label: '초5' },
+    { value: 'G6', label: '초6' },
+    { value: 'M1', label: '중1' },
+    { value: 'M2', label: '중2' },
+    { value: 'M3', label: '중3' }
+  ];
+
+  // 학생 데이터 불러오기
+  const fetchStudents = async () => {
+    if (!adminToken) return;
+
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString()
+      });
+
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (branchFilter) params.append('branch_filter', branchFilter);
+      if (statusFilter) params.append('status_filter', statusFilter);
+      if (gradeFilter) params.append('grade_filter', gradeFilter);
+
+      const response = await axios.get(`${API}/admin/students?${params}`, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+
+      if (response.data) {
+        setStudents(response.data.students || []);
+        setAllowedBranches(response.data.allowed_branches || []);
+        setUserPermissions(response.data.user_permissions || []);
+        setTotalCount(response.data.pagination?.total || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, [currentPage, branchFilter, statusFilter, gradeFilter]);
+
+  // 검색 실행
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchStudents();
+  };
+
+  // 학생 선택 처리
+  const handleSelectStudent = (studentId, checked) => {
+    if (checked) {
+      setSelectedStudents([...selectedStudents, studentId]);
+    } else {
+      setSelectedStudents(selectedStudents.filter(id => id !== studentId));
+    }
+  };
+
+  // 전체 선택 처리
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      setSelectedStudents(students.map(s => s.id));
+    } else {
+      setSelectedStudents([]);
+    }
+  };
+
+  // 학생 상세 정보 보기
+  const handleViewStudent = (student) => {
+    setSelectedStudent(student);
+    setShowSidePanel(true);
+  };
+
+  // 상태별 색상 반환
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-700 border-green-200';
+      case 'waiting': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'suspended': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'graduated': return 'bg-gray-100 text-gray-700 border-gray-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  // 상태별 한글 라벨
+  const getStatusLabel = (status) => {
+    const option = statusOptions.find(opt => opt.value === status);
+    return option ? option.label : status;
+  };
+
+  // 과정별 한글 라벨
+  const getBranchLabel = (branch) => {
+    const option = branchOptions.find(opt => opt.value === branch);
+    return option ? option.label : branch;
+  };
+
+  // 결제 상태 색상
+  const getPaymentColor = (status) => {
+    switch (status) {
+      case 'paid': return 'bg-green-100 text-green-700';
+      case 'pending': return 'bg-orange-100 text-orange-700';
+      case 'overdue': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  // CSV 내보내기
+  const handleExportCSV = async () => {
+    try {
+      const studentIds = selectedStudents.length > 0 ? selectedStudents : students.map(s => s.id);
+      
+      const response = await axios.post(`${API}/admin/students/export`, 
+        { student_ids: studentIds },
+        { 
+          headers: { Authorization: `Bearer ${adminToken}` },
+          responseType: 'blob'
+        }
+      );
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `students_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+    }
+  };
+
+  if (!adminToken) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-96">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">로그인이 필요합니다</h2>
+              <p className="text-gray-600 mb-4">학생 관리 화면에 접근하려면 관리자 로그인이 필요합니다.</p>
+              <Button onClick={() => window.location.href = '/admin/login'}>
+                관리자 로그인
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* 헤더 */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <GraduationCap className="h-8 w-8 text-blue-600 mr-3" />
+                  학생 관리
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  전체 {totalCount}명 | 선택됨 {selectedStudents.length}명
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  새로고침
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex gap-6">
+          {/* 메인 컨텐츠 */}
+          <div className={`transition-all duration-300 ${showSidePanel ? 'w-2/3' : 'w-full'}`}>
+            {/* 상단 필터/검색 영역 */}
+            <Card className="mb-6">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+                  {/* 검색창 */}
+                  <div className="lg:col-span-4">
+                    <Label htmlFor="search">검색</Label>
+                    <div className="flex">
+                      <Input
+                        id="search"
+                        placeholder="이름, 학부모명, 연락처, 학번 검색..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                        className="rounded-r-none"
+                      />
+                      <Button onClick={handleSearch} className="rounded-l-none">
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 필터 드롭다운들 */}
+                  <div className="lg:col-span-2">
+                    <Label>소속 과정</Label>
+                    <Select value={branchFilter} onValueChange={setBranchFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="전체" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">전체</SelectItem>
+                        {branchOptions
+                          .filter(option => allowedBranches.includes(option.value))
+                          .map(option => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))
+                        }
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <Label>상태</Label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="전체" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">전체</SelectItem>
+                        {statusOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <Label>학년</Label>
+                    <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="전체" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">전체</SelectItem>
+                        {gradeOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 빠른 액션 버튼들 */}
+                  <div className="lg:col-span-2">
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm">
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        신규 등록
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleExportCSV}
+                        disabled={loading}
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-1" />
+                        Excel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 메인 테이블 */}
+            <Card>
+              <CardContent className="p-0">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">로딩 중...</span>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="w-12 px-4 py-3 text-left">
+                            <Checkbox 
+                              checked={selectedStudents.length === students.length && students.length > 0}
+                              onCheckedChange={handleSelectAll}
+                            />
+                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">이름</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">학년/과정</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">반</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">학부모 연락처</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">상태</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">최근 출석</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">결제 상태</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">액션</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {students.map((student) => (
+                          <tr key={student.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-4">
+                              <Checkbox 
+                                checked={selectedStudents.includes(student.id)}
+                                onCheckedChange={(checked) => handleSelectStudent(student.id, checked)}
+                              />
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                              <div className="text-sm text-gray-500">{student.id}</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-sm text-gray-900">{student.grade}</div>
+                              <div className="text-sm text-gray-500">({getBranchLabel(student.branch)})</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-sm text-gray-900">
+                                {student.class_name || '-'}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {student.teacher_name || ''}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-sm text-gray-900">{student.parent_name}</div>
+                              <div className="text-sm text-gray-500">{student.parent_phone}</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <Badge className={`${getStatusColor(student.status)} text-xs`}>
+                                {getStatusLabel(student.status)}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-sm text-gray-900">
+                                {student.last_attendance || '2025-08-29'}
+                              </div>
+                              <div className="flex items-center mt-1">
+                                <div className="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
+                                <span className="text-xs text-gray-500">출석</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <Badge className={`${getPaymentColor(student.payment_status)} text-xs`}>
+                                {student.payment_status === 'paid' ? '납부 완료' : 
+                                 student.payment_status === 'pending' ? '미납' : '연체'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-4">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleViewStudent(student)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                상세
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {students.length === 0 && !loading && (
+                      <div className="text-center py-12">
+                        <GraduationCap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">학생이 없습니다</h3>
+                        <p className="text-gray-600">검색 조건을 변경하거나 새로운 학생을 등록해보세요.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 페이지네이션 */}
+                {totalCount > pageSize && (
+                  <div className="border-t border-gray-200 px-4 py-3 flex items-center justify-between">
+                    <div className="text-sm text-gray-600">
+                      {Math.min((currentPage - 1) * pageSize + 1, totalCount)}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(prev => prev - 1)}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        disabled={currentPage * pageSize >= totalCount}
+                        onClick={() => setCurrentPage(prev => prev + 1)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 사이드 패널 */}
+          {showSidePanel && selectedStudent && (
+            <div className="w-1/3">
+              <Card className="sticky top-6">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-lg">학생 상세 정보</CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowSidePanel(false)}
+                  >
+                    <CloseIcon className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* 프로필 카드 */}
+                  <div className="text-center border-b pb-4">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <GraduationCap className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold">{selectedStudent.name}</h3>
+                    <p className="text-gray-600">{selectedStudent.grade} ({getBranchLabel(selectedStudent.branch)})</p>
+                    <p className="text-sm text-gray-500">{selectedStudent.class_name || '반 미배정'}</p>
+                  </div>
+
+                  {/* 학부모 정보 */}
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <Users className="h-4 w-4 mr-2" />
+                      학부모 정보
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">이름:</span>
+                        <span>{selectedStudent.parent_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">연락처:</span>
+                        <span>{selectedStudent.parent_phone}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">이메일:</span>
+                        <span className="text-xs">{selectedStudent.parent_email}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 입학 절차 현황 */}
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      입학 절차 현황
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">전체 진행률</span>
+                        <span className="text-sm font-medium">{selectedStudent.enrollment_progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full" 
+                          style={{ width: `${selectedStudent.enrollment_progress}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        설명회 → 원서 → 납부 → 동의서 → 반배정
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 출결 요약 */}
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <CalendarCheck className="h-4 w-4 mr-2" />
+                      출결 현황
+                    </h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-600">출석률</span>
+                      <span className="text-sm font-medium">{selectedStudent.attendance_rate}%</span>
+                    </div>
+                    <div className="flex space-x-1">
+                      {[...Array(10)].map((_, i) => (
+                        <div 
+                          key={i}
+                          className={`w-6 h-6 rounded flex items-center justify-center text-xs ${
+                            i < 8 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                          }`}
+                        >
+                          {i < 8 ? '○' : '×'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 결제 정보 */}
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      결제 현황
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">결제 상태:</span>
+                        <Badge className={`${getPaymentColor(selectedStudent.payment_status)} text-xs`}>
+                          {selectedStudent.payment_status === 'paid' ? '납부 완료' : '미납'}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">최근 납부:</span>
+                        <span>2025-08-15</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 액션 버튼들 */}
+                  <div className="space-y-2 pt-4 border-t">
+                    <Button className="w-full" variant="outline">
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      반 변경
+                    </Button>
+                    <Button className="w-full" variant="outline">
+                      <Users className="h-4 w-4 mr-2" />
+                      상태 변경
+                    </Button>
+                    <Button className="w-full" variant="outline">
+                      <Bell className="h-4 w-4 mr-2" />
+                      학부모에게 알림
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Admin News Management Component
 const AdminNewsManagement = () => {
   const [adminToken] = useState(localStorage.getItem('adminToken'));
