@@ -2245,9 +2245,14 @@ const Signup = ({ onSignup }) => {
 
 // Find Username Component
 const FindUsername = ({ onBack }) => {
-  const [email, setEmail] = useState('');
+  const [formData, setFormData] = useState({
+    parent_name: '',
+    student_name: '',
+    student_birthdate: ''
+  });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [foundAccount, setFoundAccount] = useState(null);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -2256,30 +2261,45 @@ const FindUsername = ({ onBack }) => {
     setError('');
 
     try {
-      const response = await axios.post(`${API}/find-username`, { email });
-      setSuccess(true);
+      const response = await axios.post(`${API}/find-username`, formData);
+      
+      if (response.data.found_account) {
+        setFoundAccount(response.data.found_account);
+        setSuccess(true);
+      } else {
+        setError(response.data.message);
+      }
     } catch (error) {
-      setError(error.response?.data?.detail || '아이디 찾기 처리 중 오류가 발생했습니다.');
+      setError(error.response?.data?.detail || '계정 찾기 처리 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
+  if (success && foundAccount) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-green-600">아이디 찾기 완료</CardTitle>
+          <CardTitle className="text-2xl font-bold text-green-600">계정 찾기 완료</CardTitle>
         </CardHeader>
         <CardContent className="text-center space-y-4">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
-          <p className="text-gray-700">
-            입력하신 이메일 주소로 계정 정보를 전송했습니다.<br />
-            이메일을 확인해주세요.
+          <div className="bg-green-50 p-4 rounded-lg text-left">
+            <h4 className="font-semibold text-green-800 mb-2">찾은 계정 정보</h4>
+            <div className="space-y-1 text-sm text-green-700">
+              <p><strong>학부모명:</strong> {foundAccount.parent_name}</p>
+              <p><strong>로그인 이메일:</strong> {foundAccount.email}</p>
+              <p><strong>학생명:</strong> {foundAccount.student_name}</p>
+              <p><strong>가입일:</strong> {foundAccount.created_date}</p>
+            </div>
+          </div>
+          <p className="text-gray-700 text-sm">
+            위 이메일로 로그인하시면 됩니다.<br />
+            비밀번호를 잊으셨다면 비밀번호 찾기를 이용해주세요.
           </p>
           <div className="space-y-2">
-            <Button onClick={onBack} variant="outline" className="w-full">
-              로그인으로 돌아가기
+            <Button onClick={onBack} className="w-full bg-green-600 hover:bg-green-700">
+              로그인하러 가기
             </Button>
           </div>
         </CardContent>
@@ -2291,34 +2311,72 @@ const FindUsername = ({ onBack }) => {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-bold text-gray-900">아이디 찾기</CardTitle>
-        <CardDescription>가입 시 사용한 이메일 주소를 입력하세요</CardDescription>
+        <CardDescription>
+          학부모님과 자녀의 정보를 입력하여 로그인 이메일을 찾으세요
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="find-email">이메일 주소</Label>
+            <Label htmlFor="parent-name">학부모명</Label>
             <Input
-              id="find-email"
-              type="email"
-              placeholder="example@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="parent-name"
+              type="text"
+              placeholder="학부모 성함을 입력하세요"
+              value={formData.parent_name}
+              onChange={(e) => setFormData({...formData, parent_name: e.target.value})}
               required
             />
           </div>
           
+          <div className="space-y-2">
+            <Label htmlFor="student-name">학생명</Label>
+            <Input
+              id="student-name"
+              type="text"
+              placeholder="자녀 성함을 입력하세요"
+              value={formData.student_name}
+              onChange={(e) => setFormData({...formData, student_name: e.target.value})}
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="student-birthdate">자녀 생년월일</Label>
+            <Input
+              id="student-birthdate"
+              type="date"
+              placeholder="YYYY-MM-DD"
+              value={formData.student_birthdate}
+              onChange={(e) => setFormData({...formData, student_birthdate: e.target.value})}
+              required
+            />
+            <p className="text-xs text-gray-500">가입 시 입력한 자녀의 생년월일을 정확히 입력해주세요</p>
+          </div>
+          
           {error && (
-            <div className="text-red-600 text-sm">{error}</div>
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg">{error}</div>
           )}
           
           <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
-            {loading ? "처리 중..." : "아이디 찾기"}
+            {loading ? "찾는 중..." : "계정 찾기"}
           </Button>
           
           <Button type="button" onClick={onBack} variant="outline" className="w-full">
             로그인으로 돌아가기
           </Button>
         </form>
+        
+        <div className="mt-6 p-3 bg-blue-50 rounded-lg">
+          <div className="text-xs text-blue-800">
+            <h5 className="font-medium mb-1">💡 안내사항</h5>
+            <ul className="space-y-1 ml-2">
+              <li>• 가입 시 입력한 정보와 정확히 일치해야 합니다</li>
+              <li>• 자녀가 여러 명인 경우 아무나 한 명의 정보로 찾으시면 됩니다</li>
+              <li>• 정보를 찾을 수 없으면 고객센터(053-754-0577)로 문의해주세요</li>
+            </ul>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
