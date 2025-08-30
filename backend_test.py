@@ -1514,7 +1514,7 @@ def main():
     
     # Print results
     print("\n" + "=" * 60)
-    print("📊 ADMIN ACCOUNT CREATION SYSTEM TEST RESULTS")
+    print("📊 PARENT ENROLLMENT FORM SYSTEM TEST RESULTS")
     print("=" * 60)
     print(f"Tests passed: {tester.tests_passed}/{tester.tests_run}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
@@ -1529,21 +1529,24 @@ def main():
     print(f"\n🔑 Test Tokens:")
     print(f"   User JWT Token: {tester.token[:30] if tester.token else 'None'}...")
     print(f"   Admin JWT Token: {tester.admin_token[:30] if tester.admin_token else 'None'}...")
+    print(f"   Parent JWT Token: {getattr(tester, 'parent_token', 'None')[:30] if hasattr(tester, 'parent_token') and tester.parent_token else 'None'}...")
     print(f"   Household Token: {tester.household_token or 'None'}")
     print(f"   Test User ID: {tester.test_user_id or 'None'}")
+    print(f"   Test Student ID: {getattr(tester, 'test_student_id', 'None') or 'None'}")
     
     # Summary of key functionality tested
-    print(f"\n📋 Key Admin Account Creation Features Tested:")
-    print(f"   ✓ Existing admin login (admin/AdminPass123!)")
-    print(f"   ✓ Setup default admin accounts (super_admin, kinder_admin, junior_admin, middle_admin)")
-    print(f"   ✓ New admin login credentials verification")
-    print(f"   ✓ Role-based access control (RBAC) filtering")
-    print(f"   ✓ Custom admin creation with specific roles")
-    print(f"   ✓ Admin permissions verification")
-    print(f"   ✓ Branch-based student data filtering")
-    print(f"   ✓ RBAC system initialization")
-    print(f"   ✓ Student management endpoints")
-    print(f"   ✓ Audit logging for admin actions")
+    print(f"\n📋 Key Parent Enrollment Form Features Tested:")
+    print(f"   ✓ GET /api/parent/enroll-form - 입학 등록 폼 데이터 조회")
+    print(f"   ✓ POST /api/parent/enroll-form - 입학 등록 폼 제출")
+    print(f"   ✓ POST /api/parent/students/{{student_id}}/photo - 학생 사진 업로드")
+    print(f"   ✓ GET /api/parent/address/search - 한국 주소 검색")
+    print(f"   ✓ Parent authentication and authorization")
+    print(f"   ✓ Required field validation (address1, start_date, consent_privacy)")
+    print(f"   ✓ Shuttle service validation (pickup/dropoff spots)")
+    print(f"   ✓ Student ownership verification")
+    print(f"   ✓ File upload endpoint validation")
+    print(f"   ✓ Address search functionality")
+    print(f"   ✓ Error handling and unauthorized access")
     
     return 0 if len(failed_tests) == 0 else 1
 
