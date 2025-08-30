@@ -343,6 +343,70 @@ class BulkNotifyRequest(BaseModel):
     user_ids: List[str]
     message: str
 
+# Enrollment Flow Models
+class EnrollmentFlow(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    flow_key: str  # kinder_regular, kinder_transfer, junior, middle
+    name: str
+    description: str
+    branch: str  # kinder, junior, middle
+    program_type: str  # regular, transfer, single
+    steps: List[Dict[str, Any]]  # [{"key": "seminar", "name": "설명회", "order": 1, "required": True}]
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class StudentEnrollmentProgress(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    household_token: str
+    flow_key: str  # kinder_regular, kinder_transfer, junior, middle
+    current_step: str  # seminar, form, payment, consent, placement
+    completed_steps: List[str] = []  # ["seminar", "form"]
+    step_data: Dict[str, Any] = {}  # Store data for each step
+    status: str = "in_progress"  # in_progress, completed, on_hold
+    enrollment_status: str = "new"  # new, consultation, exam_booked, enrolled
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class FlowEvent(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    household_token: str
+    event_type: str  # seminar.completed, form.submitted, payment.paid, consent.agreed, class.assigned
+    step_key: str  # seminar, form, payment, consent, placement
+    event_data: Dict[str, Any] = {}
+    triggered_by: str  # system, admin, parent
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class PaymentRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    household_token: str
+    payment_type: str  # entrance, tuition, materials
+    amount: float
+    currency: str = "KRW"
+    payment_method: Optional[str] = None
+    payment_status: str = "pending"  # pending, paid, failed, refunded
+    payment_date: Optional[datetime] = None
+    reference_id: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ClassPlacement(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    class_name: str
+    teacher_name: str
+    schedule: str  # "Monday/Wednesday 4:00-5:30 PM"
+    classroom: str
+    level: Optional[str] = None
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    status: str = "active"  # active, completed, suspended
+    assigned_by: str  # admin_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Parent Dashboard Models
 class TestScheduleResponse(BaseModel):
     id: str
