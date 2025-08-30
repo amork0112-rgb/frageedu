@@ -2542,9 +2542,9 @@ const WelcomeAdmissionGuide = () => {
               </div>
             </div>
 
-            {/* Next Steps for New Members */}
+            {/* Next Steps for New Members - Branch Specific */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-              {/* Consultation Booking */}
+              {/* Consultation Booking - Common for all */}
               <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-blue-50 border-blue-200">
                 <CardContent className="p-6">
                   <div className="flex items-start space-x-4">
@@ -2558,53 +2558,25 @@ const WelcomeAdmissionGuide = () => {
                         1단계. 상담 예약
                       </h3>
                       <p className="text-sm text-blue-700 mb-4">
-                        방문 상담을 통해 자녀에게 맞는 프로그램을 안내받으세요
+                        전화 또는 방문 상담을 통해 {currentBranch.name} 프로그램을 안내받으세요
                       </p>
                       <div className="space-y-2 mb-4 text-sm text-blue-600">
-                        <p>📞 문의 전화: 053-754-0577</p>
+                        <p>📞 전화: 053-754-0577</p>
                         <p>📧 이메일: frage0577@gmail.com</p>
                         <p>🕐 상담시간: 평일 9:00-18:00</p>
                       </div>
                       <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                        방문 상담 예약
+                        <Phone className="w-4 h-4 mr-2" />
+                        전화 상담 예약
                       </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Test Reservation (for Junior/Middle) */}
-              {(currentBranch.name === '초등부' || currentBranch.name === '중등부') && (
-                <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-green-50 border-green-200">
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center shadow-md">
-                          <Calendar className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-green-900 mb-2">
-                          2단계. 입학시험 예약
-                        </h3>
-                        <p className="text-sm text-green-700 mb-4">
-                          {currentBranch.name} 입학시험을 통해 적정 레벨을 확인합니다
-                        </p>
-                        <Button 
-                          className="w-full bg-green-600 hover:bg-green-700 text-white"
-                          onClick={() => window.location.href = `/exam/reserve?brchType=${parentInfo?.parent_info?.branch}`}
-                        >
-                          <Calendar className="w-4 h-4 mr-2" />
-                          입학시험 예약하기
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Kindergarten Info */}
-              {currentBranch.name === '유치부' && (
+              {/* Branch Specific Second Step */}
+              {currentBranch.name === '유치부' ? (
+                // Kindergarten - Level Test Consultation
                 <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-pink-50 border-pink-200">
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
@@ -2615,11 +2587,16 @@ const WelcomeAdmissionGuide = () => {
                       </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-pink-900 mb-2">
-                          2단계. 레벨테스트 예약
+                          2단계. 레벨테스트 상담
                         </h3>
                         <p className="text-sm text-pink-700 mb-4">
-                          유치부는 재미있는 레벨테스트를 통해 적정 반을 배정합니다
+                          유치부는 재미있는 놀이식 레벨테스트를 통해 적정 반을 배정합니다
                         </p>
+                        <div className="space-y-2 mb-4 text-sm text-pink-600">
+                          <p>🎯 놀이식 영어 실력 측정</p>
+                          <p>👶 연령별 맞춤 테스트</p>
+                          <p>🎨 아이가 좋아하는 활동 중심</p>
+                        </div>
                         <Button className="w-full bg-pink-600 hover:bg-pink-700 text-white">
                           <Users className="w-4 h-4 mr-2" />
                           레벨테스트 상담
@@ -2628,41 +2605,126 @@ const WelcomeAdmissionGuide = () => {
                     </div>
                   </CardContent>
                 </Card>
+              ) : (
+                // Junior/Middle - Entrance Exam Reservation
+                <Card className="border-2 hover:shadow-lg transition-all duration-300 bg-green-50 border-green-200">
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center shadow-md">
+                          <Calendar className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-green-900 mb-2">
+                          2단계. {currentBranch.name} 입학시험 예약
+                        </h3>
+                        <p className="text-sm text-green-700 mb-4">
+                          {currentBranch.name} 입학시험을 통해 적정 레벨을 확인하고 반을 배정합니다
+                        </p>
+                        <div className="space-y-2 mb-4 text-sm text-green-600">
+                          <p>📝 {currentBranch.name === '초등부' ? '기초 영어 실력 평가' : '심화 영어 실력 평가'}</p>
+                          <p>⏰ 시험 시간: 약 {currentBranch.name === '초등부' ? '30분' : '45분'}</p>
+                          <p>📅 시험 후 즉시 결과 안내</p>
+                        </div>
+                        <Button 
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => window.location.href = `/exam/reserve?brchType=${parentInfo?.parent_info?.branch}`}
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          {currentBranch.name} 시험 예약하기
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
 
-            {/* Information Section */}
+            {/* Branch Specific Information */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
               <Card className="bg-white shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Info className="w-5 h-5 text-blue-600" />
-                    <span>다음 단계 안내</span>
+                    <span>{currentBranch.name} 과정 안내</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div>
-                        <p className="font-medium text-gray-900">상담 및 시험 후</p>
-                        <p className="text-sm text-gray-600">입학이 확정되면 관리자가 입학 절차를 활성화해드립니다</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div>
-                        <p className="font-medium text-gray-900">입학 서류 작성</p>
-                        <p className="text-sm text-gray-600">동의서, 서류 제출, 안내사항 확인을 진행하게 됩니다</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div>
-                        <p className="font-medium text-gray-900">수업 시작</p>
-                        <p className="text-sm text-gray-600">모든 절차 완료 후 정규 수업에 참여하실 수 있습니다</p>
-                      </div>
-                    </div>
+                    {currentBranch.name === '유치부' ? (
+                      <>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-pink-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">대상 연령</p>
+                            <p className="text-sm text-gray-600">5-7세 (미취학 아동)</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-pink-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">수업 방식</p>
+                            <p className="text-sm text-gray-600">놀이 중심 영어 학습, 노래와 게임</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-pink-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">레벨테스트</p>
+                            <p className="text-sm text-gray-600">놀이식 테스트로 부담 없이 진행</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : currentBranch.name === '초등부' ? (
+                      <>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">대상 연령</p>
+                            <p className="text-sm text-gray-600">8-12세 (초등학생)</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">수업 방식</p>
+                            <p className="text-sm text-gray-600">체계적인 문법과 회화 병행 학습</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">입학시험</p>
+                            <p className="text-sm text-gray-600">기초 실력 평가 후 레벨별 반 배정</p>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">대상 연령</p>
+                            <p className="text-sm text-gray-600">13-16세 (중학생)</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">수업 방식</p>
+                            <p className="text-sm text-gray-600">내신 대비 및 고급 회화 과정</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                          <div>
+                            <p className="font-medium text-gray-900">입학시험</p>
+                            <p className="text-sm text-gray-600">심화 실력 평가 후 수준별 반 운영</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -2677,7 +2739,7 @@ const WelcomeAdmissionGuide = () => {
                 <CardContent>
                   <div className="space-y-4">
                     <div>
-                      <p className="font-medium mb-2">📞 전화 상담</p>
+                      <p className="font-medium mb-2">📞 {currentBranch.name} 전담 상담</p>
                       <p className="text-sm text-purple-100 mb-1">053-754-0577</p>
                       <p className="text-sm text-purple-100">평일 9:00-18:00 / 토요일 9:00-15:00</p>
                     </div>
@@ -2688,11 +2750,61 @@ const WelcomeAdmissionGuide = () => {
                     <div>
                       <p className="font-medium mb-2">🏢 방문 상담</p>
                       <p className="text-sm text-purple-100">대구 수성구 범어천로 167 3-4층</p>
+                      <p className="text-sm text-purple-100 mt-1">
+                        {currentBranch.name} 전용 상담실 운영
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Quick Action - Branch Specific */}
+            <Card className="bg-white shadow-lg">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 text-center">
+                  {currentBranch.name} 바로 시작하기
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Button 
+                    variant="outline" 
+                    className="flex flex-col items-center p-4 h-auto space-y-2"
+                    onClick={() => window.open('tel:053-754-0577')}
+                  >
+                    <Phone className="w-6 h-6 text-blue-600" />
+                    <span className="text-sm">전화 상담</span>
+                  </Button>
+                  
+                  {currentBranch.name === '유치부' ? (
+                    <Button 
+                      variant="outline" 
+                      className="flex flex-col items-center p-4 h-auto space-y-2"
+                    >
+                      <Users className="w-6 h-6 text-pink-600" />
+                      <span className="text-sm">레벨테스트 상담</span>
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      className="flex flex-col items-center p-4 h-auto space-y-2"
+                      onClick={() => window.location.href = `/exam/reserve?brchType=${parentInfo?.parent_info?.branch}`}
+                    >
+                      <Calendar className="w-6 h-6 text-green-600" />
+                      <span className="text-sm">시험 예약</span>
+                    </Button>
+                  )}
+                  
+                  <Button 
+                    variant="outline" 
+                    className="flex flex-col items-center p-4 h-auto space-y-2"
+                    onClick={() => window.location.href = '/programs'}
+                  >
+                    <BookOpen className="w-6 h-6 text-purple-600" />
+                    <span className="text-sm">프로그램 보기</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Navigation */}
             <div className="text-center">
