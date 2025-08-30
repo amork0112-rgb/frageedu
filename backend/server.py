@@ -784,7 +784,87 @@ class ExamReservation(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-# Password Reset Models
+# Extended RBAC Models
+class Permission(BaseModel):
+    code: str  # Primary key: "can_view_student", "can_edit_student"
+    description: str
+    category: str = "general"  # general, student, notice, payment, exam, class
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class RolePermission(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    role: str  # super_admin, kinder_admin, junior_admin, middle_admin
+    permission_code: str
+    default_value: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AdminUserAllowedBranch(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    admin_user_id: str
+    branch: str  # kinder, junior, middle, kinder_single
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AdminUserPermission(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    admin_user_id: str
+    permission_code: str
+    value: bool  # Override role default
+    granted_by: str  # super_admin user_id who granted this
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Admin(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    username: str
+    email: str
+    password_hash: str
+    role: str = "kinder_admin"  # super_admin, kinder_admin, junior_admin, middle_admin
+    is_active: bool = True
+    last_login: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Enhanced Student Model for Management
+class StudentManagement(BaseModel):
+    id: str
+    name: str
+    grade: str
+    birthdate: Optional[str]
+    branch: str
+    program_subtype: str
+    status: str = "active"  # active, inactive, graduated, suspended
+    parent_name: str
+    parent_phone: str
+    parent_email: str
+    class_name: Optional[str] = None
+    teacher_name: Optional[str] = None
+    attendance_rate: float = 0.0
+    payment_status: str = "paid"  # paid, unpaid, overdue
+    last_attendance: Optional[str] = None
+    enrollment_progress: float = 0.0
+    created_at: datetime
+
+# Permission Response Models
+class PermissionResponse(BaseModel):
+    code: str
+    description: str
+    category: str
+    has_permission: bool
+
+class AdminUserResponse(BaseModel):
+    id: str
+    username: str
+    email: str
+    role: str
+    is_active: bool
+    allowed_branches: List[str]
+    permissions: List[PermissionResponse]
+    last_login: Optional[datetime]
+    created_at: datetime
+
+class StudentManagementResponse(BaseModel):
+    students: List[StudentManagement]
+    pagination: Dict[str, Any]
+    allowed_branches: List[str]
+    user_permissions: List[str]
 class PasswordResetRequest(BaseModel):
     email: str
 
