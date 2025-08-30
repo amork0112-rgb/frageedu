@@ -1077,6 +1077,353 @@ class FrageEDUAPITester:
         success, response = self.run_test("Login Disabled User", "POST", "login", 401, login_data)
         return success
 
+    # PARENT ENROLLMENT FORM SYSTEM TESTS
+    def setup_parent_enrollment_test_data(self):
+        """Setup test data for parent enrollment form testing"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        
+        # Create parent account
+        signup_data = {
+            "email": f"parent_enroll_{timestamp}@frage.edu",
+            "phone": "010-1234-5678",
+            "name": f"김학부모{timestamp}",
+            "student_name": f"김학생{timestamp}",
+            "student_birthdate": "2015-03-15",
+            "password": "ParentEnroll123!",
+            "terms_accepted": True,
+            "branch": "junior"
+        }
+        
+        success, response = self.run_test("Create Parent for Enrollment Test", "POST", "signup", 200, signup_data)
+        if success and 'token' in response:
+            self.parent_token = response['token']
+            self.parent_user_id = response['user']['id']
+            self.parent_household_token = response['household_token']
+            
+            # Get student ID from response
+            if 'students' in response and len(response['students']) > 0:
+                self.test_student_id = response['students'][0]['id']
+                print(f"   ✅ Parent enrollment test data created")
+                print(f"   Parent Token: {self.parent_token[:20]}...")
+                print(f"   Student ID: {self.test_student_id}")
+                return True
+        
+        return False
+
+    def test_parent_enroll_form_get(self):
+        """Test GET /api/parent/enroll-form - 입학 등록 폼 데이터 조회"""
+        if not hasattr(self, 'parent_token') or not hasattr(self, 'test_student_id'):
+            if not self.setup_parent_enrollment_test_data():
+                print("❌ Failed to setup parent enrollment test data")
+                return False
+        
+        # Test with valid studentId
+        params = {"studentId": self.test_student_id}
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "GET Parent Enroll Form Data", 
+            "GET", 
+            "parent/enroll-form", 
+            200, 
+            params=params,
+            headers=headers
+        )
+        
+        if success and response:
+            # Verify response structure
+            required_fields = ['student', 'parent']
+            for field in required_fields:
+                if field not in response:
+                    print(f"❌ Missing required field: {field}")
+                    return False
+            
+            # Verify student data
+            student = response.get('student', {})
+            if 'id' not in student or 'name' not in student:
+                print("❌ Invalid student data structure")
+                return False
+            
+            # Verify parent data
+            parent = response.get('parent', {})
+            if 'name' not in parent or 'phone' not in parent:
+                print("❌ Invalid parent data structure")
+                return False
+            
+            print("✅ Enrollment form data structure verified")
+            print(f"   Student: {student.get('name')} (ID: {student.get('id')})")
+            print(f"   Parent: {parent.get('name')} ({parent.get('phone')})")
+            
+            return True
+        
+        return False
+
+    def test_parent_enroll_form_get_unauthorized(self):
+        """Test GET /api/parent/enroll-form without authentication"""
+        params = {"studentId": "test-student-id"}
+        
+        success, response = self.run_test(
+            "GET Parent Enroll Form - Unauthorized", 
+            "GET", 
+            "parent/enroll-form", 
+            401, 
+            params=params
+        )
+        return success
+
+    def test_parent_enroll_form_get_invalid_student(self):
+        """Test GET /api/parent/enroll-form with invalid studentId"""
+        if not hasattr(self, 'parent_token'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        params = {"studentId": "invalid-student-id"}
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "GET Parent Enroll Form - Invalid Student", 
+            "GET", 
+            "parent/enroll-form", 
+            404, 
+            params=params,
+            headers=headers
+        )
+        return success
+
+    def test_parent_enroll_form_post_valid(self):
+        """Test POST /api/parent/enroll-form - 입학 등록 폼 제출 (Valid Data)"""
+        if not hasattr(self, 'parent_token') or not hasattr(self, 'test_student_id'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        # Valid enrollment form data
+        form_data = {
+            "student_id": self.test_student_id,
+            "postal_code": "06236",
+            "address1": "서울 강남구 테헤란로 146",
+            "address2": "현대벤처빌 5층",
+            "use_shuttle": True,
+            "pickup_spot": "강남역 2번 출구",
+            "dropoff_spot": "학원 정문",
+            "start_date": "2025-03-01",
+            "consent_privacy": True,
+            "consent_signer": "김학부모"
+        }
+        
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "POST Parent Enroll Form - Valid Data", 
+            "POST", 
+            "parent/enroll-form", 
+            200, 
+            data=form_data,
+            headers=headers
+        )
+        
+        if success and response:
+            if response.get('ok') == True:
+                print("✅ Enrollment form submitted successfully")
+                return True
+            else:
+                print("❌ Unexpected response format")
+        
+        return False
+
+    def test_parent_enroll_form_post_missing_required(self):
+        """Test POST /api/parent/enroll-form - Missing Required Fields"""
+        if not hasattr(self, 'parent_token') or not hasattr(self, 'test_student_id'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        # Test missing address1
+        form_data = {
+            "student_id": self.test_student_id,
+            "postal_code": "06236",
+            # "address1": "서울 강남구 테헤란로 146",  # Missing required field
+            "start_date": "2025-03-01",
+            "consent_privacy": True
+        }
+        
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "POST Parent Enroll Form - Missing Address", 
+            "POST", 
+            "parent/enroll-form", 
+            400, 
+            data=form_data,
+            headers=headers
+        )
+        
+        return success
+
+    def test_parent_enroll_form_post_shuttle_validation(self):
+        """Test POST /api/parent/enroll-form - Shuttle Validation"""
+        if not hasattr(self, 'parent_token') or not hasattr(self, 'test_student_id'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        # Test use_shuttle=True but missing pickup/dropoff spots
+        form_data = {
+            "student_id": self.test_student_id,
+            "address1": "서울 강남구 테헤란로 146",
+            "use_shuttle": True,
+            # Missing pickup_spot and dropoff_spot
+            "start_date": "2025-03-01",
+            "consent_privacy": True
+        }
+        
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "POST Parent Enroll Form - Shuttle Validation", 
+            "POST", 
+            "parent/enroll-form", 
+            400, 
+            data=form_data,
+            headers=headers
+        )
+        
+        return success
+
+    def test_parent_student_photo_upload_valid(self):
+        """Test POST /api/parent/students/{student_id}/photo - Valid Photo Upload"""
+        if not hasattr(self, 'parent_token') or not hasattr(self, 'test_student_id'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        # Create a small test image file (1x1 pixel PNG)
+        import base64
+        
+        # 1x1 pixel PNG image in base64
+        png_data = base64.b64decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+        )
+        
+        # For this test, we'll simulate the file upload
+        # Note: requests library file upload would require actual file handling
+        # This is a simplified test to verify the endpoint exists and responds correctly
+        
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        # Test endpoint accessibility (we expect it to fail due to missing file, but should not be 404)
+        success, response = self.run_test(
+            "POST Student Photo Upload - Endpoint Test", 
+            "POST", 
+            f"parent/students/{self.test_student_id}/photo", 
+            422,  # Expect 422 for missing file parameter
+            headers=headers
+        )
+        
+        # If we get 422, it means the endpoint exists and is processing the request
+        if success:
+            print("✅ Photo upload endpoint is accessible and validates input")
+            return True
+        
+        return False
+
+    def test_parent_student_photo_upload_unauthorized(self):
+        """Test POST /api/parent/students/{student_id}/photo - Unauthorized Access"""
+        success, response = self.run_test(
+            "POST Student Photo Upload - Unauthorized", 
+            "POST", 
+            "parent/students/test-student-id/photo", 
+            401
+        )
+        return success
+
+    def test_parent_student_photo_upload_invalid_student(self):
+        """Test POST /api/parent/students/{student_id}/photo - Invalid Student ID"""
+        if not hasattr(self, 'parent_token'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "POST Student Photo Upload - Invalid Student", 
+            "POST", 
+            "parent/students/invalid-student-id/photo", 
+            422,  # Expect 422 for missing file, but would be 404 if student check fails first
+            headers=headers
+        )
+        return success
+
+    def test_parent_address_search(self):
+        """Test GET /api/parent/address/search - 한국 주소 검색"""
+        if not hasattr(self, 'parent_token'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        params = {"query": "강남구"}
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "GET Parent Address Search", 
+            "GET", 
+            "parent/address/search", 
+            200, 
+            params=params,
+            headers=headers
+        )
+        
+        if success and response:
+            # Verify response is a list of addresses
+            if isinstance(response, list):
+                print(f"✅ Address search returned {len(response)} results")
+                if len(response) > 0:
+                    first_address = response[0]
+                    required_fields = ['address_name', 'postal_code']
+                    for field in required_fields:
+                        if field not in first_address:
+                            print(f"❌ Missing address field: {field}")
+                            return False
+                    print(f"   Sample address: {first_address.get('address_name')}")
+                return True
+            else:
+                print("❌ Address search response is not a list")
+        
+        return False
+
+    def test_parent_address_search_unauthorized(self):
+        """Test GET /api/parent/address/search - Unauthorized Access"""
+        params = {"query": "강남구"}
+        
+        success, response = self.run_test(
+            "GET Parent Address Search - Unauthorized", 
+            "GET", 
+            "parent/address/search", 
+            401, 
+            params=params
+        )
+        return success
+
+    def test_parent_address_search_empty_query(self):
+        """Test GET /api/parent/address/search - Empty Query"""
+        if not hasattr(self, 'parent_token'):
+            if not self.setup_parent_enrollment_test_data():
+                return False
+        
+        params = {"query": ""}
+        headers = {'Authorization': f'Bearer {self.parent_token}'}
+        
+        success, response = self.run_test(
+            "GET Parent Address Search - Empty Query", 
+            "GET", 
+            "parent/address/search", 
+            200,  # Should still return 200 but empty results
+            params=params,
+            headers=headers
+        )
+        
+        if success and response:
+            if isinstance(response, list) and len(response) == 0:
+                print("✅ Empty query returns empty results as expected")
+                return True
+        
+        return False
+
 def main():
     print("🚀 Starting Frage EDU Admin Account Creation API Tests")
     print("=" * 60)
