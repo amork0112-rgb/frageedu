@@ -11,7 +11,11 @@ class FrageEDUAPITester:
         self.token = None
         self.household_token = None
         self.admin_token = None
+        self.parent_token = None  # For parent enrollment form tests
         self.test_user_id = None
+        self.test_student_id = None  # For parent enrollment form tests
+        self.parent_user_id = None  # For parent enrollment form tests
+        self.parent_household_token = None  # For parent enrollment form tests
         self.tests_run = 0
         self.tests_passed = 0
 
