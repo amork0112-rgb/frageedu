@@ -5609,8 +5609,8 @@ function App() {
 
   const handleLogin = (newToken, userData, household_token) => {
     login(newToken, userData);
-    // Redirect to the new parent dashboard instead of old admission portal
-    window.location.href = `/parent/dashboard`;
+    // Redirect to the new comprehensive dashboard
+    window.location.href = `/parent/dashboard/comprehensive`;
   };
 
   return (
