@@ -2637,8 +2637,12 @@ async def get_student_management_list(
         query = {}
         
         # Apply branch filtering based on admin access
-        if branch_filter and branch_filter in allowed_branches:
-            query["branch"] = branch_filter
+        if branch_filter:
+            if branch_filter in allowed_branches:
+                query["branch"] = branch_filter
+            else:
+                # Admin requested a branch they don't have access to - return empty results
+                query["branch"] = {"$in": []}  # This will return no results
         else:
             query["branch"] = {"$in": allowed_branches}
         
