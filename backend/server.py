@@ -504,8 +504,8 @@ async def update_consent(token: str, consent_data: ConsentUpdate):
     )
     
     return {"message": "Consent updated successfully", "signature_info": {
-        "parent_name": user['parent_name'],
-        "student_name": user['student_name'],
+        "parent_name": user['name'],
+        "student_name": student['name'] if student else "",
         "signed_at": consent_with_signature["signed_at"]
     }}
 
