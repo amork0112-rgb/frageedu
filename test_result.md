@@ -260,11 +260,11 @@ backend:
 
   - task: "Implement GET /admin/audit for audit log viewing"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: false
         agent: "testing"
@@ -272,6 +272,9 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "Fixed ObjectId serialization by removing _id fields from audit log documents before JSON response. Added proper data cleaning for all audit log entries."
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - ObjectId serialization issue completely resolved. GET /admin/audit endpoint now returns proper JSON response with audit logs, pagination, and actor names. Supports filtering by targetId, action type, and pagination. No more 500 errors. All audit functionality working correctly."
 
 frontend:
 
