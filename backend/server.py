@@ -67,9 +67,12 @@ class Student(BaseModel):
     grade: str
     birthdate: Optional[str] = None
     branch: str  # kinder, junior, middle
-    program_subtype: str = "regular"  # regular, kinder_single, transfer
+    program_subtype: str = "regular"  # kinder_regular, kinder_single, junior_regular, middle_regular
+    status: str = "pending"  # pending, reserved_test, admitted_pending, enrolled, leave, withdrawn
     requires_exam: bool = True  # False for kinder_regular
     notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ClassAssignment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
