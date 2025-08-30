@@ -2827,6 +2827,147 @@ async def get_student_dashboard_preview(
             raise e
         raise HTTPException(status_code=500, detail=f"Error fetching dashboard preview: {str(e)}")
 
+@api_router.post("/find-username")
+async def find_username(request: FindUsernameRequest):
+    """Find username by email address"""
+    try:
+        # Look for user by email
+        user = await db.users.find_one({"email": request.email.lower()})
+        
+        if not user:
+            # Don't reveal if email exists or not for security
+            return {"message": "이메일 주소로 계정 정보를 전송했습니다."}
+        
+        # For parent accounts, the "username" is typically the email
+        # But we'll send helpful account info
+        account_info = {
+            "name": user.get("name", ""),
+            "email": user.get("email", ""),
+            "role": user.get("role", "parent"),
+            "created_date": user.get("created_at", "")[:10]  # YYYY-MM-DD format
+        }
+        
+        # In a real system, you would send this via email
+        # For now, we'll return it (but in production, never return user data)
+        print(f"Account info for {request.email}: Name: {account_info['name']}, Role: {account_info['role']}")
+        
+        # Log the account recovery attempt
+        recovery_log = {
+            "type": "username_recovery",
+            "email": request.email,
+            "user_id": user.get("id"),
+            "ip": "system",  # Should get real IP
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.account_recovery_logs.insert_one(recovery_log)
+        
+        return {"message": "계정 정보를 이메일로 전송했습니다. 이메일을 확인해주세요."}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="계정 찾기 처리 중 오류가 발생했습니다.")
+
+@api_router.post("/reset-password")
+async def request_password_reset(request: PasswordResetRequest):
+    """Request password reset via email"""
+    try:
+        # Look for user by email
+        user = await db.users.find_one({"email": request.email.lower()})
+        
+        if not user:
+            # Don't reveal if email exists or not for security
+            return {"message": "비밀번호 재설정 링크를 이메일로 전송했습니다."}
+        
+        # Generate reset token (6 digits for simplicity)
+        reset_token = str(random.randint(100000, 999999))
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # 1 hour expiry
+        
+        # Save reset token
+        reset_record = PasswordResetToken(
+            email=request.email.lower(),
+            reset_token=reset_token,
+            expires_at=expires_at
+        )
+        
+        reset_dict = reset_record.dict()
+        reset_dict['created_at'] = reset_dict['created_at'].isoformat()
+        reset_dict['expires_at'] = reset_dict['expires_at'].isoformat()
+        
+        await db.password_reset_tokens.insert_one(reset_dict)
+        
+        # In a real system, send email with reset_token
+        print(f"Password reset token for {request.email}: {reset_token}")
+        print(f"Token expires at: {expires_at}")
+        
+        # For demo purposes, we can return the token (NEVER do this in production)
+        return {
+            "message": "비밀번호 재설정 인증번호를 이메일로 전송했습니다.",
+            "demo_token": reset_token,  # Remove this in production
+            "demo_note": "실제 서비스에서는 이메일로만 전송됩니다."
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="비밀번호 재설정 요청 처리 중 오류가 발생했습니다.")
+
+@api_router.post("/reset-password/confirm")
+async def confirm_password_reset(request: PasswordResetConfirm):
+    """Confirm password reset with token and set new password"""
+    try:
+        # Find valid reset token
+        reset_record = await db.password_reset_tokens.find_one({
+            "email": request.email.lower(),
+            "reset_token": request.reset_token,
+            "used": False
+        })
+        
+        if not reset_record:
+            raise HTTPException(status_code=400, detail="잘못된 인증번호입니다.")
+        
+        # Check if token is expired
+        expires_at = datetime.fromisoformat(reset_record["expires_at"].replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > expires_at:
+            raise HTTPException(status_code=400, detail="인증번호가 만료되었습니다. 다시 요청해주세요.")
+        
+        # Find user and update password
+        user = await db.users.find_one({"email": request.email.lower()})
+        if not user:
+            raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+        
+        # Update password
+        new_password_hash = hash_password(request.new_password)
+        await db.users.update_one(
+            {"id": user["id"]},
+            {
+                "$set": {
+                    "password_hash": new_password_hash,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+        )
+        
+        # Mark reset token as used
+        await db.password_reset_tokens.update_one(
+            {"id": reset_record["id"]},
+            {"$set": {"used": True}}
+        )
+        
+        # Log password reset
+        reset_log = {
+            "type": "password_reset",
+            "email": request.email,
+            "user_id": user["id"],
+            "reset_token_id": reset_record["id"],
+            "ip": "system",  # Should get real IP
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.account_recovery_logs.insert_one(reset_log)
+        
+        return {"message": "비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요."}
+        
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail="비밀번호 변경 처리 중 오류가 발생했습니다.")
+
 async def send_alimtalk_notification(student_id: str, template_type: str, data: Dict = None):
     """Send AlimTalk notification (placeholder for integration)"""
     # TODO: Integrate with Solapi AlimTalk API
