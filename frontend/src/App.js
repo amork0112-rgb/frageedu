@@ -1137,8 +1137,7 @@ const Programs = () => {
       subtitle: '유치부 (5-7세)',
       description: '놀이 중심의 영어 교육으로 자연스러운 언어 습득을 도와드립니다.',
       features: ['스토리텔링', '신체 활동', '창의적 표현', '기초 파닉스'],
-      examRequired: false,
-      consultationText: '상담 및 레벨테스트 신청'
+      highlights: ['원어민과 함께하는 즐거운 수업', '개별 맞춤 진도', '창의력 개발 중심']
     },
     {
       id: 'junior',
@@ -1146,8 +1145,7 @@ const Programs = () => {
       subtitle: '초등부 (8-12세)', 
       description: '체계적인 읽기, 쓰기 교육과 프로젝트 기반 학습을 진행합니다.',
       features: ['독해력 향상', '창작 활동', '토론 참여', '프로젝트 학습'],
-      examRequired: true,
-      examText: '입학시험 예약'
+      highlights: ['체계적인 커리큘럼', '프로젝트 기반 학습', '발표력 향상']
     },
     {
       id: 'middle', 
@@ -1155,8 +1153,7 @@ const Programs = () => {
       subtitle: '중등부 (13-16세)',
       description: '비판적 사고력과 고급 영어 실력을 기르는 심화 과정입니다.',
       features: ['비판적 사고', '에세이 작성', '토론 및 발표', '학술 영어'],
-      examRequired: true,
-      examText: '입학시험 예약'
+      highlights: ['대학 진학 준비', '고급 영어 실력', '리더십 개발']
     }
   ];
 
