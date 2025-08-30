@@ -65,13 +65,149 @@ class Student(BaseModel):
     name: str
     grade: str
     birthdate: Optional[str] = None
+    branch: str  # kinder, junior, middle
+    program_subtype: str = "regular"  # regular, kinder_single, transfer
+    requires_exam: bool = True  # False for kinder_regular
     notes: Optional[str] = None
+
+class ClassAssignment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    class_id: str
+    class_name: str
+    teacher_name: str
+    teacher_id: Optional[str] = None
+    weekday: str  # "Monday,Wednesday,Friday"
+    time_start: str  # "16:00"
+    time_end: str  # "17:30"
+    classroom: str
+    level: Optional[str] = None
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    status: str = "active"  # active, completed, suspended
+    materials: List[str] = []
+    assigned_by: str  # admin_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ExamResult(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    exam_reservation_id: Optional[str] = None
+    score: Optional[int] = None  # 0-100
+    level: Optional[str] = None  # Beginner, Elementary, Intermediate, Advanced
+    passed: bool = False
+    feedback: Optional[str] = None
+    recommended_class: Optional[str] = None
+    tested_at: datetime
+    graded_by: Optional[str] = None  # admin/teacher_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Attendance(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    class_assignment_id: str
+    date: str  # "2025-08-30"
+    status: str  # present, late, absent, excused
+    arrival_time: Optional[str] = None  # "16:05"
+    notes: Optional[str] = None
+    marked_by: Optional[str] = None  # teacher_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Homework(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4))
+    class_id: str
+    class_assignment_id: str
+    title: str
+    description: Optional[str] = None
+    due_date: datetime
+    file_urls: List[str] = []  # Uploaded assignment files
+    points: Optional[int] = None  # Total points possible
+    created_by: str  # teacher_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class HomeworkSubmission(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    homework_id: str
+    student_id: str
+    status: str = "pending"  # pending, submitted, graded, late
+    submission_text: Optional[str] = None
+    file_urls: List[str] = []
+    score: Optional[int] = None
+    feedback: Optional[str] = None
+    submitted_at: Optional[datetime] = None
+    graded_at: Optional[datetime] = None
+    graded_by: Optional[str] = None  # teacher_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Billing(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_id: str
+    household_token: str
+    billing_type: str  # tuition, materials, exam_fee, entrance_fee
+    month: str  # "2025-08"
+    amount: float
+    currency: str = "KRW"
+    due_date: datetime
+    status: str = "pending"  # pending, paid, overdue, cancelled
+    payment_date: Optional[datetime] = None
+    payment_method: Optional[str] = None
+    receipt_url: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Notice(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    content: str
+    notice_type: str  # general, urgent, maintenance, event
+    target_audience: str = "all"  # all, branch:kinder, branch:junior, branch:middle
+    priority: str = "normal"  # low, normal, high, urgent
+    file_urls: List[str] = []
+    published: bool = True
+    publish_date: Optional[datetime] = None
+    expire_date: Optional[datetime] = None
+    created_by: str  # admin_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class NoticeAcknowledgment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    notice_id: str
+    student_id: str
+    household_token: str
+    acknowledged: bool = False
+    acknowledged_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Guide(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    description: Optional[str] = None
+    guide_type: str  # admission, orientation, curriculum, policy
+    target_branch: str = "all"  # all, kinder, junior, middle
+    file_url: Optional[str] = None
+    content: Optional[str] = None  # Rich text content
+    required_reading: bool = False
+    order: int = 0  # Display order
+    published: bool = True
+    created_by: str  # admin_id
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class GuideAcknowledgment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    guide_id: str
+    student_id: str
+    household_token: str
+    acknowledged: bool = False
+    acknowledged_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AuditLog(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     actor_user_id: str
-    action: str  # RESET_PW, DISABLE, ENABLE, EXPORT, NOTIFY
-    target_type: str  # User, Parent, Student
+    action: str  # RESET_PW, DISABLE, ENABLE, EXPORT, NOTIFY, ENROLL, ASSIGN_CLASS
+    target_type: str  # User, Parent, Student, ClassAssignment
     target_id: str
     meta: Optional[Dict[str, Any]] = {}
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
