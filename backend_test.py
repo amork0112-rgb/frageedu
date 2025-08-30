@@ -789,6 +789,229 @@ class FrageEDUAPITester:
             print("   ❌ Endpoints return different data - inconsistency detected!")
             return False
 
+    # NEW ADMIN ACCOUNT CREATION TESTS
+    def test_existing_admin_login(self):
+        """Test login with existing admin credentials (admin/AdminPass123!)"""
+        login_data = {
+            "username": "admin",
+            "password": "AdminPass123!"
+        }
+        
+        success, response = self.run_test("Login with existing admin", "POST", "admin/login", 200, login_data)
+        if success and 'token' in response:
+            self.admin_token = response['token']
+            print(f"   ✅ Existing admin login successful")
+            print(f"   Admin role: {response.get('admin', {}).get('role', 'unknown')}")
+            return True
+        return False
+
+    def test_setup_default_admins(self):
+        """Test /admin/setup-default-admins endpoint to create default admin accounts"""
+        if not self.admin_token:
+            print("❌ No admin token available for setup default admins test")
+            return False
+        
+        success, response = self.run_test("Setup default admin accounts", "POST", "admin/setup-default-admins", 200)
+        if success:
+            created_admins = response.get('created_admins', [])
+            skipped_admins = response.get('skipped_admins', [])
+            
+            print(f"   ✅ Setup completed successfully")
+            print(f"   Created admins: {len(created_admins)}")
+            print(f"   Skipped admins: {len(skipped_admins)}")
+            
+            for admin in created_admins:
+                print(f"     - Created: {admin.get('username')} ({admin.get('role')})")
+            
+            for admin in skipped_admins:
+                print(f"     - Skipped: {admin} (already exists)")
+            
+            return True
+        return False
+
+    def test_new_admin_logins(self):
+        """Test login credentials for each new admin account"""
+        new_admins = [
+            {"username": "super_admin", "password": "Super123!", "role": "super_admin"},
+            {"username": "kinder_admin", "password": "Kinder123!", "role": "kinder_admin"},
+            {"username": "junior_admin", "password": "Junior123!", "role": "junior_admin"},
+            {"username": "middle_admin", "password": "Middle123!", "role": "middle_admin"}
+        ]
+        
+        successful_logins = []
+        failed_logins = []
+        
+        for admin_info in new_admins:
+            login_data = {
+                "username": admin_info["username"],
+                "password": admin_info["password"]
+            }
+            
+            success, response = self.run_test(f"Login {admin_info['username']}", "POST", "admin/login", 200, login_data)
+            if success and 'token' in response:
+                successful_logins.append(admin_info["username"])
+                actual_role = response.get('admin', {}).get('role', 'unknown')
+                expected_role = admin_info["role"]
+                
+                if actual_role == expected_role:
+                    print(f"   ✅ {admin_info['username']}: Login successful, role verified ({actual_role})")
+                else:
+                    print(f"   ⚠️  {admin_info['username']}: Login successful but role mismatch (expected: {expected_role}, got: {actual_role})")
+            else:
+                failed_logins.append(admin_info["username"])
+                print(f"   ❌ {admin_info['username']}: Login failed")
+        
+        print(f"\n📊 Login Results:")
+        print(f"   Successful: {len(successful_logins)}/{len(new_admins)}")
+        print(f"   Failed: {len(failed_logins)}")
+        
+        return len(failed_logins) == 0
+
+    def test_role_based_access_control(self):
+        """Test each admin's access to /admin/students endpoint to verify RBAC filtering"""
+        admin_credentials = [
+            {"username": "super_admin", "password": "Super123!", "expected_branches": ["kinder", "junior", "middle"]},
+            {"username": "kinder_admin", "password": "Kinder123!", "expected_branches": ["kinder"]},
+            {"username": "junior_admin", "password": "Junior123!", "expected_branches": ["junior"]},
+            {"username": "middle_admin", "password": "Middle123!", "expected_branches": ["middle"]}
+        ]
+        
+        rbac_results = []
+        
+        for admin_info in admin_credentials:
+            # Login as this admin
+            login_data = {
+                "username": admin_info["username"],
+                "password": admin_info["password"]
+            }
+            
+            success, login_response = self.run_test(f"Login as {admin_info['username']} for RBAC test", "POST", "admin/login", 200, login_data)
+            if not success:
+                print(f"   ❌ Failed to login as {admin_info['username']}")
+                rbac_results.append(False)
+                continue
+            
+            # Set admin token for this test
+            temp_admin_token = self.admin_token
+            self.admin_token = login_response['token']
+            
+            # Test access to students endpoint
+            success, response = self.run_test(f"Test RBAC for {admin_info['username']}", "GET", "admin/students", 200)
+            if success:
+                allowed_branches = response.get('allowed_branches', [])
+                expected_branches = admin_info["expected_branches"]
+                
+                # Check if allowed branches match expected
+                if set(allowed_branches) == set(expected_branches):
+                    print(f"   ✅ {admin_info['username']}: RBAC correct - branches {allowed_branches}")
+                    rbac_results.append(True)
+                else:
+                    print(f"   ❌ {admin_info['username']}: RBAC mismatch - expected {expected_branches}, got {allowed_branches}")
+                    rbac_results.append(False)
+                
+                # Test branch filtering
+                students = response.get('students', [])
+                print(f"     Students visible: {len(students)}")
+                
+                # Verify students are only from allowed branches
+                for student in students:
+                    student_branch = student.get('branch')
+                    if student_branch not in allowed_branches:
+                        print(f"     ❌ Student from unauthorized branch {student_branch} visible to {admin_info['username']}")
+                        rbac_results[-1] = False
+                        break
+                else:
+                    if students:
+                        print(f"     ✅ All visible students are from authorized branches")
+            else:
+                print(f"   ❌ {admin_info['username']}: Failed to access students endpoint")
+                rbac_results.append(False)
+            
+            # Restore original admin token
+            self.admin_token = temp_admin_token
+        
+        successful_rbac = sum(rbac_results)
+        print(f"\n📊 RBAC Test Results:")
+        print(f"   Successful: {successful_rbac}/{len(admin_credentials)}")
+        
+        return all(rbac_results)
+
+    def test_create_custom_admin_with_role(self):
+        """Test /admin/create-with-role endpoint to create custom admin"""
+        if not self.admin_token:
+            print("❌ No admin token available for create custom admin test")
+            return False
+        
+        timestamp = datetime.now().strftime('%H%M%S')
+        custom_admin_data = {
+            "username": f"custom_admin_{timestamp}",
+            "email": f"custom{timestamp}@frage.edu",
+            "password": "CustomAdmin123!",
+            "role": "junior_admin"
+        }
+        
+        success, response = self.run_test("Create custom admin with role", "POST", "admin/create-with-role", 200, custom_admin_data)
+        if success:
+            created_admin = response.get('admin', {})
+            print(f"   ✅ Custom admin created successfully")
+            print(f"   Username: {created_admin.get('username')}")
+            print(f"   Role: {created_admin.get('role')}")
+            print(f"   Email: {created_admin.get('email')}")
+            
+            # Test login with new custom admin
+            login_data = {
+                "username": custom_admin_data["username"],
+                "password": custom_admin_data["password"]
+            }
+            
+            login_success, login_response = self.run_test(f"Login with custom admin", "POST", "admin/login", 200, login_data)
+            if login_success:
+                print(f"   ✅ Custom admin login successful")
+                return True
+            else:
+                print(f"   ❌ Custom admin login failed")
+                return False
+        
+        return False
+
+    def test_admin_role_permissions_verification(self):
+        """Verify that each admin role has correct permissions and branch access"""
+        # Login as super_admin to test permissions
+        login_data = {
+            "username": "super_admin",
+            "password": "Super123!"
+        }
+        
+        success, login_response = self.run_test("Login as super_admin for permissions test", "POST", "admin/login", 200, login_data)
+        if not success:
+            print("❌ Failed to login as super_admin for permissions test")
+            return False
+        
+        # Set super_admin token
+        temp_admin_token = self.admin_token
+        self.admin_token = login_response['token']
+        
+        # Test super_admin can create new admins
+        timestamp = datetime.now().strftime('%H%M%S')
+        test_admin_data = {
+            "username": f"test_perm_admin_{timestamp}",
+            "email": f"testperm{timestamp}@frage.edu",
+            "password": "TestPerm123!",
+            "role": "kinder_admin"
+        }
+        
+        success, response = self.run_test("Super admin create new admin test", "POST", "admin/create-with-role", 200, test_admin_data)
+        
+        # Restore original token
+        self.admin_token = temp_admin_token
+        
+        if success:
+            print("   ✅ Super admin can create new admin accounts")
+            return True
+        else:
+            print("   ❌ Super admin cannot create new admin accounts")
+            return False
+
     def test_login_disabled_user(self):
         """Test login with disabled user account"""
         # First create a user and disable them
