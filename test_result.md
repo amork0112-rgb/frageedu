@@ -167,9 +167,10 @@ metadata:
 test_plan:
   current_focus:
     - "Debug /admin/students API returning null/empty data"
-    - "Verify RBAC initialization and student data"
-  stuck_tasks:
-    - "Debug /admin/students API returning null/empty data"
+    - "Create sample student data for testing"
+    - "Fix RBAC branch filtering logic bug"
+    - "Fix RBAC initialization for regular admin roles"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
