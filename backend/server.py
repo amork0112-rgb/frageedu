@@ -2560,12 +2560,15 @@ async def signup(user_data: UserCreate):
     parent_dict['created_at'] = parent_dict['created_at'].isoformat()
     await db.parents.insert_one(parent_dict)
     
-    # Create student record with birthdate
+    # Create student record with birthdate and branch
     student = Student(
         parent_id=parent.id,
         name=user_data.student_name,
         grade="1",  # Default grade, can be updated later
-        birthdate=user_data.student_birthdate  # Add birthdate
+        birthdate=user_data.student_birthdate,  # Add birthdate
+        branch=user_data.branch,  # Add branch
+        program_subtype="regular" if user_data.branch == "kinder" else "regular",
+        requires_exam=False if user_data.branch == "kinder" else True
     )
     
     await db.students.insert_one(student.dict())
