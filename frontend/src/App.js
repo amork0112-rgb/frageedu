@@ -423,75 +423,48 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* Community Section */}
+      {/* News Preview Section */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Community</h2>
-            <p className="text-xl text-gray-600">학부모와 학생들이 함께 만드는 교육 공동체</p>
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">Latest News</h2>
+            <p className="text-xl text-gray-600">Frage EDU의 최신 소식을 확인하세요</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">학부모 후기</h3>
-              <div className="space-y-6">
-                <Card className="p-6">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-purple-600 font-semibold">김</span>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">김○○ 학부모</h4>
-                      <p className="text-sm text-gray-500">초등 3학년 학부모</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-600">
-                    "아이가 영어에 대한 흥미를 잃었었는데, 프라게에 다니면서 다시 영어가 재미있다고 합니다."
-                  </p>
-                </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <Badge className="bg-blue-100 text-blue-800 mb-3">개강소식</Badge>
+              <h4 className="font-semibold mb-2">2025년 3월 신학기 개강 안내</h4>
+              <p className="text-gray-600 mb-3 text-sm">
+                새 학기를 맞이하여 모든 반의 개강 일정과 준비사항을 안내드립니다.
+              </p>
+              <span className="text-sm text-gray-500">2025.02.20</span>
+            </Card>
 
-                <Card className="p-6">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-semibold">박</span>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">박○○ 학부모</h4>
-                      <p className="text-sm text-gray-500">초등 5학년 학부모</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-600">
-                    "단순 암기가 아닌 생각하는 영어교육으로 아이의 사고력이 많이 늘었어요."
-                  </p>
-                </Card>
-              </div>
-            </div>
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <Badge className="bg-green-100 text-green-800 mb-3">공지사항</Badge>
+              <h4 className="font-semibold mb-2">겨울방학 특별 프로그램 접수</h4>
+              <p className="text-gray-600 mb-3 text-sm">
+                창의적 글쓰기와 토론 중심의 집중 영어 캠프를 진행합니다.
+              </p>
+              <span className="text-sm text-gray-500">2025.01.15</span>
+            </Card>
 
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">최신 소식</h3>
-              <div className="space-y-6">
-                <Card className="p-6 hover:shadow-lg transition-shadow">
-                  <h4 className="font-semibold mb-2">2025 겨울방학 특별 프로그램 안내</h4>
-                  <p className="text-gray-600 mb-3">
-                    창의적 글쓰기와 토론 중심의 집중 영어 캠프를 진행합니다.
-                  </p>
-                  <span className="text-sm text-purple-600">2025.01.15</span>
-                </Card>
+            <Card className="p-6 hover:shadow-lg transition-shadow">
+              <Badge className="bg-purple-100 text-purple-800 mb-3">뉴스</Badge>
+              <h4 className="font-semibold mb-2">지역 영어교육 혁신상 수상</h4>
+              <p className="text-gray-600 mb-3 text-sm">
+                비판적 사고력 기반 영어교육 프로그램으로 혁신상을 수상했습니다.
+              </p>
+              <span className="text-sm text-gray-500">2025.01.10</span>
+            </Card>
+          </div>
 
-                <Card className="p-6 hover:shadow-lg transition-shadow">
-                  <h4 className="font-semibold mb-2">학부모 교육 세미나 개최</h4>
-                  <p className="text-gray-600 mb-3">
-                    자녀의 영어 학습을 도울 수 있는 가정 내 환경 조성법을 알려드립니다.
-                  </p>
-                  <span className="text-sm text-purple-600">2025.01.10</span>
-                </Card>
-              </div>
-
-              <Button variant="outline" className="w-full mt-6">
-                Join the Community
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
+          <div className="text-center mt-12">
+            <Button variant="outline" onClick={() => window.location.href = '/news'}>
+              모든 소식 보기
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
           </div>
         </div>
       </section>
