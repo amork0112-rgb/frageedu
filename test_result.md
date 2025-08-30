@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Implement comprehensive Member/Parent Management system for admin portal with separate User, Parent, Student models, audit logging, search/filtering, bulk operations, and proper RBAC. The system should provide a complete interface for managing member accounts with pagination, sorting, and detailed profile views."
+user_problem_statement: "Debug and fix the /admin/students API that is currently returning null/empty data despite RBAC implementation. The API should filter students based on admin's allowed branches and permissions, with proper data retrieval for the admin student management interface."
 
 backend:
   - task: "Update data models to separate User, Parent, Student with new fields"
