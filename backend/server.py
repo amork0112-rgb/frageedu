@@ -5873,13 +5873,19 @@ async def get_enroll_form_data(
 ):
     """Get pre-filled enrollment form data for student"""
     try:
+        print(f"Current user ID: {current_user.id}")
+        
         # Get parent info
         parent = await db.parents.find_one({"user_id": current_user.id})
+        print(f"Parent found: {parent is not None}")
         if not parent:
             raise HTTPException(status_code=404, detail="Parent info not found")
         
+        print(f"Parent ID: {parent['id']}")
+        
         # Get student info
         student = await db.students.find_one({"id": studentId, "parent_id": parent["id"]})
+        print(f"Student found: {student is not None}")
         if not student:
             raise HTTPException(status_code=404, detail="Student not found or not accessible")
         
