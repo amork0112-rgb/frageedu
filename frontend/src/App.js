@@ -6719,6 +6719,24 @@ const ParentEnrollForm = () => {
     setAddressSearchQuery('');
   };
 
+  const isFormValid = () => {
+    return form.address1 && 
+           form.start_date && 
+           form.consent_privacy &&
+           (!form.use_shuttle || (form.pickup_spot && form.dropoff_spot));
+  };
+
+  const getCompletedFieldsCount = () => {
+    let count = 0;
+    if (form.address1) count++;
+    if (form.start_date) count++;
+    if (form.consent_privacy) count++;
+    if (photoPreview) count++;
+    if (!form.use_shuttle || (form.pickup_spot && form.dropoff_spot)) count++;
+    if (form.consent_signer) count++;
+    return count;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
