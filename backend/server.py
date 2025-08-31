@@ -4124,7 +4124,9 @@ async def signup(user_data: UserCreate):
         user_dict = user.dict()
         user_dict['created_at'] = user_dict['created_at'].isoformat()
         user_dict['last_login_at'] = None  # Set to None initially
+        print(f"DEBUG: Inserting user with ID: {user.id}")
         await db.users.insert_one(user_dict)
+        print(f"DEBUG: User inserted successfully")
         
         # Create parent record
         parent = Parent(
