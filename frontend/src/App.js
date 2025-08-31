@@ -7249,15 +7249,6 @@ const ParentEnrollForm = () => {
     </div>
   );
 };
-                      placeholder="기본 주소를 입력하세요"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="address2">상세 주소</Label>
-                    <Input
-                      id="address2"
                       value={form.address2}
                       onChange={(e) => handleInputChange('address2', e.target.value)}
                       placeholder="상세 주소를 입력하세요"
