@@ -1779,7 +1779,7 @@ async def build_resources_card(student_id: str, household_token: str, student: D
     
     # Check consent status (from existing admission_data or new consent system)
     admission_data = await db.admission_data.find_one({"household_token": household_token})
-    consent_pending = admission_data and admission_data.get("consent_status") != "completed"
+    consent_pending = bool(admission_data and admission_data.get("consent_status") != "completed")
     
     return ResourcesCard(
         guides_total=len(guides),
