@@ -4150,7 +4150,10 @@ async def signup(user_data: UserCreate):
         requires_exam=False if user_data.branch == "kinder" else True
     )
     
-    await db.students.insert_one(student.dict())
+    student_dict = student.dict()
+    student_dict['created_at'] = student_dict['created_at'].isoformat()
+    student_dict['updated_at'] = student_dict['updated_at'].isoformat()
+    await db.students.insert_one(student_dict)
     
     # Create admission data (legacy)
     admission = AdmissionData(household_token=user.household_token)
