@@ -4158,7 +4158,9 @@ async def signup(user_data: UserCreate):
         student_dict = student.dict()
         student_dict['created_at'] = student_dict['created_at'].isoformat()
         student_dict['updated_at'] = student_dict['updated_at'].isoformat()
+        print(f"DEBUG: Inserting student with ID: {student.id} for parent: {parent.id}")
         await db.students.insert_one(student_dict)
+        print(f"DEBUG: Student inserted successfully")
         
         # Create admission data (legacy)
         admission = AdmissionData(household_token=user.household_token)
