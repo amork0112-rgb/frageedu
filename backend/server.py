@@ -4219,8 +4219,15 @@ async def signup(user_data: UserCreate):
 
 @api_router.post("/login")
 async def login(login_data: UserLogin):
+    print(f"DEBUG: Login attempt for email: {login_data.email}")
     user = await db.users.find_one({"email": login_data.email})
+    print(f"DEBUG: User found: {user is not None}")
+    if user:
+        print(f"DEBUG: User status: {user.get('status')}")
+        print(f"DEBUG: Password verification: {verify_password(login_data.password, user['password_hash'])}")
+    
     if not user or not verify_password(login_data.password, user['password_hash']):
+        print(f"DEBUG: Login failed - user exists: {user is not None}, password valid: {verify_password(login_data.password, user['password_hash']) if user else False}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     # Check if user is active
