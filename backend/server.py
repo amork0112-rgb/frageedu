@@ -4103,107 +4103,113 @@ async def send_status_change_notification(student_id: str, notification_type: st
 
 @api_router.post("/signup")
 async def signup(user_data: UserCreate):
-    if not user_data.terms_accepted:
-        raise HTTPException(status_code=400, detail="Terms must be accepted")
-    
-    # Check if user already exists
-    existing_user = await db.users.find_one({"email": user_data.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create user
-    user = User(
-        email=user_data.email,
-        phone=user_data.phone,
-        name=user_data.name,
-        password_hash=hash_password(user_data.password)
-    )
-    
-    # Insert user
-    user_dict = user.dict()
-    user_dict['created_at'] = user_dict['created_at'].isoformat()
-    user_dict['last_login_at'] = None  # Set to None initially
-    await db.users.insert_one(user_dict)
-    
-    # Create parent record
-    parent = Parent(
-        user_id=user.id,
-        name=user_data.name,
-        phone=user_data.phone,
-        email=user_data.email,
-        branch=user_data.branch,
-        household_token=user.household_token
-    )
-    
-    parent_dict = parent.dict()
-    parent_dict['created_at'] = parent_dict['created_at'].isoformat()
-    await db.parents.insert_one(parent_dict)
-    
-    # Create student record with birthdate and branch
-    student = Student(
-        parent_id=parent.id,
-        name=user_data.student_name,
-        grade="1",  # Default grade, can be updated later
-        birthdate=user_data.student_birthdate,  # Add birthdate
-        branch=user_data.branch,  # Add branch
-        program_subtype="regular" if user_data.branch == "kinder" else "regular",
-        requires_exam=False if user_data.branch == "kinder" else True
-    )
-    
-    student_dict = student.dict()
-    student_dict['created_at'] = student_dict['created_at'].isoformat()
-    student_dict['updated_at'] = student_dict['updated_at'].isoformat()
-    await db.students.insert_one(student_dict)
-    
-    # Create admission data (legacy)
-    admission = AdmissionData(household_token=user.household_token)
-    admission_dict = admission.dict()
-    admission_dict['updated_at'] = admission_dict['updated_at'].isoformat()
-    await db.admission_data.insert_one(admission_dict)
-    
-    # Determine flow key based on branch
-    flow_key_mapping = {
-        "kinder": "kinder_regular",  # Default to regular, can be changed by admin
-        "junior": "junior",
-        "middle": "middle"
-    }
-    
-    flow_key = flow_key_mapping.get(user_data.branch, "junior")
-    
-    # Initialize enrollment progress
     try:
-        # Check if flow exists
-        flow = await db.enrollment_flows.find_one({"flow_key": flow_key, "is_active": True})
-        if flow:
-            # Get first step
-            first_step = min(flow["steps"], key=lambda x: x["order"])
-            
-            # Create progress record
-            progress = StudentEnrollmentProgress(
-                student_id=student.id,
-                household_token=user.household_token,
-                flow_key=flow_key,
-                current_step=first_step["key"]
-            )
-            
-            progress_dict = progress.dict()
-            progress_dict['created_at'] = progress_dict['created_at'].isoformat()
-            progress_dict['updated_at'] = progress_dict['updated_at'].isoformat()
-            
-            await db.student_enrollment_progress.insert_one(progress_dict)
+        if not user_data.terms_accepted:
+            raise HTTPException(status_code=400, detail="Terms must be accepted")
+        
+        # Check if user already exists
+        existing_user = await db.users.find_one({"email": user_data.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Create user
+        user = User(
+            email=user_data.email,
+            phone=user_data.phone,
+            name=user_data.name,
+            password_hash=hash_password(user_data.password)
+        )
+        
+        # Insert user
+        user_dict = user.dict()
+        user_dict['created_at'] = user_dict['created_at'].isoformat()
+        user_dict['last_login_at'] = None  # Set to None initially
+        await db.users.insert_one(user_dict)
+        
+        # Create parent record
+        parent = Parent(
+            user_id=user.id,
+            name=user_data.name,
+            phone=user_data.phone,
+            email=user_data.email,
+            branch=user_data.branch,
+            household_token=user.household_token
+        )
+        
+        parent_dict = parent.dict()
+        parent_dict['created_at'] = parent_dict['created_at'].isoformat()
+        await db.parents.insert_one(parent_dict)
+        
+        # Create student record with birthdate and branch
+        student = Student(
+            parent_id=parent.id,
+            name=user_data.student_name,
+            grade="1",  # Default grade, can be updated later
+            birthdate=user_data.student_birthdate,  # Add birthdate
+            branch=user_data.branch,  # Add branch
+            program_subtype="regular" if user_data.branch == "kinder" else "regular",
+            requires_exam=False if user_data.branch == "kinder" else True
+        )
+        
+        student_dict = student.dict()
+        student_dict['created_at'] = student_dict['created_at'].isoformat()
+        student_dict['updated_at'] = student_dict['updated_at'].isoformat()
+        await db.students.insert_one(student_dict)
+        
+        # Create admission data (legacy)
+        admission = AdmissionData(household_token=user.household_token)
+        admission_dict = admission.dict()
+        admission_dict['updated_at'] = admission_dict['updated_at'].isoformat()
+        await db.admission_data.insert_one(admission_dict)
+        
+        # Determine flow key based on branch
+        flow_key_mapping = {
+            "kinder": "kinder_regular",  # Default to regular, can be changed by admin
+            "junior": "junior",
+            "middle": "middle"
+        }
+        
+        flow_key = flow_key_mapping.get(user_data.branch, "junior")
+        
+        # Initialize enrollment progress
+        try:
+            # Check if flow exists
+            flow = await db.enrollment_flows.find_one({"flow_key": flow_key, "is_active": True})
+            if flow:
+                # Get first step
+                first_step = min(flow["steps"], key=lambda x: x["order"])
+                
+                # Create progress record
+                progress = StudentEnrollmentProgress(
+                    student_id=student.id,
+                    household_token=user.household_token,
+                    flow_key=flow_key,
+                    current_step=first_step["key"]
+                )
+                
+                progress_dict = progress.dict()
+                progress_dict['created_at'] = progress_dict['created_at'].isoformat()
+                progress_dict['updated_at'] = progress_dict['updated_at'].isoformat()
+                
+                await db.student_enrollment_progress.insert_one(progress_dict)
+        except Exception as e:
+            # Don't fail signup if progress init fails, just log it
+            print(f"Warning: Failed to initialize progress for student {student.id}: {str(e)}")
+        
+        # Create JWT token
+        token = create_jwt_token(user.id, user.household_token)
+        
+        return {
+            "message": "User created successfully",
+            "token": token,
+            "user": UserResponse(**user.dict()),
+            "household_token": user.household_token
+        }
+    except HTTPException:
+        raise
     except Exception as e:
-        # Don't fail signup if progress init fails, just log it
-        print(f"Warning: Failed to initialize progress for student {student.id}: {str(e)}")
-    
-    # Create JWT token
-    token = create_jwt_token(user.id, user.household_token)
-    
-    return {
-        "message": "User created successfully",
-        "token": token,
-        "user": UserResponse(**user.dict()),
-        "household_token": user.household_token
-    }
+        print(f"Signup error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")
 
 @api_router.post("/login")
 async def login(login_data: UserLogin):
