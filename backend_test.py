@@ -1,3 +1,4 @@
+import os
 import requests
 import sys
 import json
@@ -5,7 +6,10 @@ from datetime import datetime
 import time
 
 class FrageEDUAPITester:
-    def __init__(self, base_url="https://school-register-2.preview.emergentagent.com"):
+    def __init__(self, base_url=None):
+        base_url = base_url or os.environ.get(
+            "API_BASE_URL", "https://school-register-2.preview.emergentagent.com"
+        )
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None
@@ -18,6 +22,15 @@ class FrageEDUAPITester:
         self.parent_household_token = None  # For parent enrollment form tests
         self.tests_run = 0
         self.tests_passed = 0
+
+    def server_available(self) -> bool:
+        """Check if the API server is reachable before running tests"""
+        try:
+            requests.get(self.base_url, timeout=5)
+            return True
+        except requests.RequestException as e:
+            print(f"❌ Cannot reach API server at {self.base_url}: {e}")
+            return False
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None, params=None):
         """Run a single API test"""
@@ -1453,8 +1466,12 @@ class FrageEDUAPITester:
 def main():
     print("🚀 Starting Frage EDU Parent Enrollment Form System API Tests")
     print("=" * 60)
-    
+
     tester = FrageEDUAPITester()
+
+    if not tester.server_available():
+        print("❌ API server unavailable; aborting tests.")
+        return 1
     
     # Test sequence - PRIORITY: Parent Enrollment Form System
     tests = [

@@ -5287,6 +5287,24 @@ const AdminStudentManagement = () => {
     setShowSidePanel(true);
   };
 
+  const handlePaymentStatusClick = async (student) => {
+    const newStatus = prompt(
+      '결제 상태를 입력하세요 (paid/pending/overdue):',
+      student.payment_status
+    );
+    if (!newStatus || newStatus === student.payment_status) return;
+    try {
+      await axios.post(
+        `${API}/admin/students/${student.id}/update-status`,
+        { payment_status: newStatus },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      fetchStudents();
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+    }
+  };
+
   // 상태별 색상 반환
   const getStatusColor = (status) => {
     switch (status) {
@@ -5376,11 +5394,17 @@ const AdminStudentManagement = () => {
                   <GraduationCap className="h-8 w-8 text-blue-600 mr-3" />
                   학생 관리
                 </h1>
-                <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 mt-1">
                   전체 {totalCount}명 | 선택됨 {selectedStudents.length}명
                 </p>
               </div>
               <div className="flex items-center space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => (window.location.href = '/admin/dashboard')}
+                >
+                  대시보드
+                </Button>
                 <Button variant="outline" onClick={() => window.location.reload()}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   새로고침
@@ -5532,8 +5556,13 @@ const AdminStudentManagement = () => {
                                 onCheckedChange={(checked) => handleSelectStudent(student.id, checked)}
                               />
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                            <td
+                              className="px-4 py-4 cursor-pointer"
+                              onClick={() => handleViewStudent(student)}
+                            >
+                              <div className="text-sm font-medium text-blue-600 hover:underline">
+                                {student.name}
+                              </div>
                               <div className="text-sm text-gray-500">{student.id}</div>
                             </td>
                             <td className="px-4 py-4">
@@ -5567,9 +5596,15 @@ const AdminStudentManagement = () => {
                               </div>
                             </td>
                             <td className="px-4 py-4">
-                              <Badge className={`${getPaymentColor(student.payment_status)} text-xs`}>
-                                {student.payment_status === 'paid' ? '납부 완료' : 
-                                 student.payment_status === 'pending' ? '미납' : '연체'}
+                              <Badge
+                                className={`${getPaymentColor(student.payment_status)} text-xs cursor-pointer`}
+                                onClick={() => handlePaymentStatusClick(student)}
+                              >
+                                {student.payment_status === 'paid'
+                                  ? '납부 완료'
+                                  : student.payment_status === 'pending'
+                                  ? '미납'
+                                  : '연체'}
                               </Badge>
                             </td>
                             <td className="px-4 py-4">
