@@ -6802,28 +6802,36 @@ const ParentEnrollForm = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-7xl mx-auto px-4 py-24">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <FileText className="w-10 h-10 text-purple-600" />
-          </div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-            입학 등록 폼
-          </h1>
-          <p className="text-xl text-gray-600">
-            아래 정보를 입력하여 입학 등록을 완료해주세요
-          </p>
+        {/* 상단 진행 카드 */}
+        <div className="mb-8">
+          <Card className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">입학 등록 진행하기</h2>
+                  <p className="text-purple-100">
+                    {data.student?.name}님의 입학 등록 정보를 완성해주세요
+                  </p>
+                </div>
+                <div className="hidden md:block">
+                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                    <FileText className="w-8 h-8" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Form */}
+          {/* 좌측: 입력 폼 */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Address Section */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* 주소 정보 */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <MapPin className="w-5 h-5 mr-2" />
+                    <MapPin className="w-5 h-5 mr-2 text-purple-600" />
                     주소 정보
                   </CardTitle>
                 </CardHeader>
@@ -6843,11 +6851,327 @@ const ParentEnrollForm = () => {
                           type="button"
                           variant="outline"
                           onClick={() => setShowAddressSearch(true)}
+                          className="whitespace-nowrap"
                         >
+                          <Search className="w-4 h-4 mr-1" />
                           검색
                         </Button>
                       </div>
                     </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="address1">주소 (기본) <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="address1"
+                      value={form.address1}
+                      onChange={(e) => handleInputChange('address1', e.target.value)}
+                      placeholder="기본 주소를 입력하세요"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="address2">상세 주소</Label>
+                    <Input
+                      id="address2"
+                      value={form.address2}
+                      onChange={(e) => handleInputChange('address2', e.target.value)}
+                      placeholder="상세 주소를 입력하세요 (선택사항)"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 교통 수단 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <CreditCard className="w-5 h-5 mr-2 text-purple-600" />
+                    교통 수단
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="use_shuttle"
+                      checked={form.use_shuttle}
+                      onCheckedChange={(checked) => handleInputChange('use_shuttle', checked)}
+                    />
+                    <Label htmlFor="use_shuttle" className="font-medium">
+                      차량 이용 (스쿨버스)
+                    </Label>
+                  </div>
+
+                  {form.use_shuttle && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div>
+                        <Label htmlFor="pickup_spot">승차 지점 <span className="text-red-500">*</span></Label>
+                        <Input
+                          id="pickup_spot"
+                          value={form.pickup_spot}
+                          onChange={(e) => handleInputChange('pickup_spot', e.target.value)}
+                          placeholder="승차 지점을 입력하세요"
+                          required={form.use_shuttle}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="dropoff_spot">하차 지점 <span className="text-red-500">*</span></Label>
+                        <Input
+                          id="dropoff_spot"
+                          value={form.dropoff_spot}
+                          onChange={(e) => handleInputChange('dropoff_spot', e.target.value)}
+                          placeholder="하차 지점을 입력하세요"
+                          required={form.use_shuttle}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 등원 정보 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Calendar className="w-5 h-5 mr-2 text-purple-600" />
+                    등원 정보
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <Label htmlFor="start_date">등원 시작일 <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="start_date"
+                      type="date"
+                      value={form.start_date}
+                      onChange={(e) => handleInputChange('start_date', e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 학생 사진 업로드 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <ImageIcon className="w-5 h-5 mr-2 text-purple-600" />
+                    학생 사진 업로드
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-start space-x-4">
+                    <div className="relative">
+                      <img
+                        src={photoPreview || '/placeholder-avatar.png'}
+                        alt="학생 사진"
+                        className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                      />
+                      {photoPreview && (
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-4 h-4 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        onChange={handlePhotoSelect}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                      />
+                      <p className="mt-2 text-xs text-gray-500">
+                        • JPG/PNG 형식, 5MB 이하<br/>
+                        • 정사각형 비율 권장 (1:1)<br/>
+                        • 학생 얼굴이 선명하게 보이는 사진
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 개인정보 수집·이용 동의 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Shield className="w-5 h-5 mr-2 text-purple-600" />
+                    개인정보 수집·이용 동의
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-gray-50 rounded-lg text-sm border">
+                    <h4 className="font-semibold mb-3 text-gray-900">개인정보 수집·이용 동의서</h4>
+                    <div className="space-y-2 text-gray-700">
+                      <p><strong>수집 목적:</strong> 입학 등록, 학사 관리, 비상연락</p>
+                      <p><strong>수집 항목:</strong> 학생/학부모 정보, 주소, 연락처, 사진</p>
+                      <p><strong>보유 기간:</strong> 졸업 후 5년간</p>
+                      <p><strong>처리 근거:</strong> 정보주체의 동의</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="consent_privacy"
+                        checked={form.consent_privacy}
+                        onCheckedChange={(checked) => handleInputChange('consent_privacy', checked)}
+                        required
+                        className="mt-1"
+                      />
+                      <Label htmlFor="consent_privacy" className="text-sm leading-relaxed">
+                        위 개인정보 수집·이용에 동의합니다. <span className="text-red-500">*</span><br/>
+                        <span className="text-gray-500 text-xs">
+                          (동의하지 않을 경우 입학 등록이 제한될 수 있습니다)
+                        </span>
+                      </Label>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="consent_signer">동의자 성명</Label>
+                      <Input
+                        id="consent_signer"
+                        value={form.consent_signer}
+                        onChange={(e) => handleInputChange('consent_signer', e.target.value)}
+                        placeholder="동의자 성명 (자동 입력됨)"
+                        className="bg-gray-50"
+                        readOnly
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 제출 버튼 */}
+              <div className="flex justify-center pt-6">
+                <Button
+                  type="submit"
+                  disabled={loading || uploading || !isFormValid()}
+                  className="bg-purple-600 hover:bg-purple-700 px-8 py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      제출 중...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      입학 등록 제출
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          {/* 우측: 요약 카드 */}
+          <div className="space-y-6">
+            {/* 학생 정보 카드 */}
+            <Card className="sticky top-24">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center">
+                  <Users className="w-5 h-5 mr-2 text-purple-600" />
+                  기본 정보
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center">
+                  <div className="relative inline-block">
+                    <img
+                      src={photoPreview || '/placeholder-avatar.png'}
+                      alt="학생 사진"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-purple-200 mx-auto"
+                    />
+                    {!photoPreview && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-full border-2 border-dashed border-gray-300">
+                        <ImageIcon className="w-8 h-8 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="font-semibold text-lg mt-3 text-gray-900">
+                    {data.student?.name}
+                  </h3>
+                  {age && (
+                    <p className="text-gray-600 text-sm">
+                      {age}세 ({data.student?.birthdate})
+                    </p>
+                  )}
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">과정</span>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      {data.student?.branch}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">프로그램</span>
+                    <span className="text-gray-900">{data.student?.program_subtype}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">학부모</span>
+                    <span className="text-gray-900">{data.parent?.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 font-medium">연락처</span>
+                    <span className="text-gray-900">{data.parent?.phone}</span>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* 진행 상태 */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">등록 진행률</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span>완료된 항목</span>
+                      <span>{getCompletedFieldsCount()}/6</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(getCompletedFieldsCount() / 6) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 도움말 카드 */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="p-4">
+                <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                  <Info className="w-4 h-4 mr-2" />
+                  도움말
+                </h4>
+                <div className="space-y-2 text-blue-800 text-sm">
+                  <p>• 모든 필수 항목(*)을 입력해주세요</p>
+                  <p>• 차량 이용 시 승하차 지점이 필요합니다</p>
+                  <p>• 사진은 학생 본인의 최근 사진을 업로드해주세요</p>
+                </div>
+                <Separator className="my-3 bg-blue-200" />
+                <div className="space-y-1 text-xs text-blue-700">
+                  <div className="flex items-center space-x-2">
+                    <Phone className="w-3 h-3" />
+                    <span>053-754-0577</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Mail className="w-3 h-3" />
+                    <span>frage0577@gmail.com</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
                   </div>
                   
                   <div>
