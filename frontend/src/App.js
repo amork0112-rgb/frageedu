@@ -7249,15 +7249,8 @@ const ParentEnrollForm = () => {
     </div>
   );
 };
-                      value={form.address2}
-                      onChange={(e) => handleInputChange('address2', e.target.value)}
-                      placeholder="상세 주소를 입력하세요"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
 
-              {/* Transportation Section */}
+const App = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
