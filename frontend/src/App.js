@@ -7190,14 +7190,65 @@ const ParentEnrollForm = () => {
           </div>
         </div>
       </div>
+
+      {/* Address Search Modal */}
+      {showAddressSearch && (
+        <Dialog open={showAddressSearch} onOpenChange={setShowAddressSearch}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>주소 검색</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex space-x-2">
+                <Input
+                  value={addressSearchQuery}
+                  onChange={(e) => setAddressSearchQuery(e.target.value)}
+                  placeholder="도로명 또는 지번 주소를 입력하세요"
+                  onKeyPress={(e) => e.key === 'Enter' && searchAddress()}
+                />
+                <Button onClick={searchAddress}>
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+              
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {addressResults.map((address, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => selectAddress(address)}
+                  >
+                    <div className="font-medium">{address.road_address || address.address_name}</div>
+                    <div className="text-sm text-gray-600">
+                      우편번호: {address.postal_code}
+                    </div>
+                    {address.building_name && (
+                      <div className="text-sm text-gray-500">{address.building_name}</div>
+                    )}
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="address1">주소 (기본) *</Label>
-                    <Input
-                      id="address1"
-                      value={form.address1}
-                      onChange={(e) => handleInputChange('address1', e.target.value)}
+                ))}
+                
+                {addressResults.length === 0 && addressSearchQuery && (
+                  <div className="text-center text-gray-500 py-4">
+                    검색 결과가 없습니다
+                  </div>
+                )}
+                
+                {!addressSearchQuery && (
+                  <div className="text-center text-gray-400 py-4">
+                    주소를 입력하고 검색해주세요
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <Footer />
+    </div>
+  );
+};
                       placeholder="기본 주소를 입력하세요"
                       required
                     />
