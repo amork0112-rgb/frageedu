@@ -4140,7 +4140,9 @@ async def signup(user_data: UserCreate):
         
         parent_dict = parent.dict()
         parent_dict['created_at'] = parent_dict['created_at'].isoformat()
+        print(f"DEBUG: Inserting parent with ID: {parent.id} for user: {user.id}")
         await db.parents.insert_one(parent_dict)
+        print(f"DEBUG: Parent inserted successfully")
         
         # Create student record with birthdate and branch
         student = Student(
