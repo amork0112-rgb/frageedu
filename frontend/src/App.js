@@ -560,13 +560,11 @@ const Homepage = () => {
 // Auth Context (simplified for this demo)
 const useAuth = () => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
-
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
-  }, [token]);
+  const initialToken = localStorage.getItem('token');
+  if (initialToken) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
+  }
+  const [token, setToken] = useState(initialToken);
 
   const login = (newToken, userData) => {
     localStorage.setItem('token', newToken);
@@ -588,11 +586,14 @@ const useAuth = () => {
 // Admin Auth Context
 const useAdminAuth = () => {
   const [admin, setAdmin] = useState(null);
-  const [adminToken, setAdminToken] = useState(localStorage.getItem('adminToken'));
+  const initialAdminToken = localStorage.getItem('adminToken');
+  if (initialAdminToken) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${initialAdminToken}`;
+  }
+  const [adminToken, setAdminToken] = useState(initialAdminToken);
 
   useEffect(() => {
     if (adminToken) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${adminToken}`;
       fetchAdminProfile();
     }
   }, [adminToken]);
